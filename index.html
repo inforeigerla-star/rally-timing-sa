@@ -270,9 +270,29 @@ body{background:var(--dark);color:var(--text1);font-family:'Inter',sans-serif;fo
 <div class="toast" id="toast"></div>
 
 <!-- FIREBASE SDK -->
-<script type="module">
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import { getFirestore, collection, query, where, orderBy, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+<script>
+// Firebase se carga de forma diferida y opcional — si falla, el resto de la app sigue funcionando.
+let initializeApp, getFirestore, collection, query, where, orderBy, onSnapshot;
+let firebaseReady = false;
+
+async function loadFirebaseSDK() {
+  try {
+    const appMod = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
+    const fsMod  = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+    initializeApp = appMod.initializeApp;
+    getFirestore  = fsMod.getFirestore;
+    collection    = fsMod.collection;
+    query         = fsMod.query;
+    where         = fsMod.where;
+    orderBy       = fsMod.orderBy;
+    onSnapshot    = fsMod.onSnapshot;
+    firebaseReady = true;
+  } catch (e) {
+    console.error('No se pudo cargar el SDK de Firebase:', e);
+    firebaseReady = false;
+  }
+}
+loadFirebaseSDK();
 
 // ══════════════════════════════════════════════════════════
 // DATOS REALES 2026 — cargados automáticamente
@@ -294,6 +314,16 @@ function autoEstado(fi, ff) {
   const diff = (ini - TODAY) / (1000*60*60*24);
   if (diff <= 7 && diff > 0) return 'next';
   return 'pend';
+}
+
+const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const SUP_COLOR = { tierra:'#8B4513', asfalto:'#555577', nieve:'#4699BB', mixto:'#4A9070' };
+const CAMP_COLOR = { ARG:'#C0392B', CODASUR:'#2980B9', WRC:'#8B5CF6' };
+
+function formatFecha(fi, ff) {
+  const i = new Date(fi), f = new Date(ff);
+  const mi = MESES[i.getMonth()].substring(0,3);
+  return `${i.getDate()} – ${f.getDate()} ${mi} ${i.getFullYear()}`;
 }
 
 const EVENTOS_RAW = [
@@ -372,15 +402,7 @@ const STANDINGS = {
   ],
 };
 
-const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-const SUP_COLOR = { tierra:'#8B4513', asfalto:'#555577', nieve:'#4699BB', mixto:'#4A9070' };
-const CAMP_COLOR = { ARG:'#C0392B', CODASUR:'#2980B9', WRC:'#8B5CF6' };
 
-function formatFecha(fi, ff) {
-  const i = new Date(fi), f = new Date(ff);
-  const mi = MESES[i.getMonth()].substring(0,3);
-  return `${i.getDate()} – ${f.getDate()} ${mi} ${i.getFullYear()}`;
-}
 
 // ══════════════════════════════════════════════════════════
 // STATE
@@ -615,6 +637,17 @@ window.connectFirebase = async function() {
     appId:       document.getElementById('fb-appId').value.trim(),
   };
   if (!config.apiKey || !config.projectId) { toast('Completá al menos API Key y Project ID','err'); return; }
+
+  if (!firebaseReady) {
+    toast('Cargando el SDK de Firebase...', 'ok');
+    await loadFirebaseSDK();
+    if (!firebaseReady) {
+      toast('No se pudo cargar Firebase. Revisá tu conexión a internet o si el archivo está abierto como file://', 'err');
+      setFB('err','Error cargando SDK');
+      return;
+    }
+  }
+
   try {
     const app = initializeApp(config, 'rally-app-' + Date.now());
     const db  = getFirestore(app);
