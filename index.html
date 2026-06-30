@@ -171,10 +171,10 @@ body{background:var(--dark);color:var(--text1);font-family:'Inter',sans-serif;fo
     <div><div class="logo-text">Rally Timing SA</div><div class="logo-sub">Sudamérica · Codasur · WRC 2026</div></div>
   </div>
   <nav class="nav">
-    <button class="nav-btn active" onclick="showView('dashboard')">Dashboard</button>
-    <button class="nav-btn" onclick="showView('calendario')">Calendario</button>
+    <button class="nav-btn active" id="nav-dashboard-btn">Dashboard</button>
+    <button class="nav-btn" id="nav-calendario-btn">Calendario</button>
   </nav>
-  <div class="fb-status-pill" onclick="document.getElementById('modal').style.display='flex'">
+  <div class="fb-status-pill" id="fb-pill">
     <div class="fb-dot" id="fb-dot"></div>
     <span id="fb-label">Conectar Firebase</span>
   </div>
@@ -191,9 +191,9 @@ body{background:var(--dark);color:var(--text1);font-family:'Inter',sans-serif;fo
     <div class="field-group"><label>DATABASE URL (Realtime DB)</label><input id="fb-dbURL" placeholder="https://rally-timing-sa-default-rtdb.firebaseio.com"/></div>
     <div class="field-group"><label>APP ID</label><input id="fb-appId" placeholder="1:123...:web:abc..."/></div>
     <div class="modal-btns">
-      <button class="btn-demo" onclick="useDemo()">Usar datos demo</button>
-      <button class="btn-primary" onclick="connectFirebase()">Conectar</button>
-      <button class="btn-ghost" onclick="document.getElementById('modal').style.display='none'">Cerrar</button>
+      <button class="btn-demo" id="btn-demo">Usar datos demo</button>
+      <button class="btn-primary" id="btn-connect">Conectar</button>
+      <button class="btn-ghost" id="btn-close-modal">Cerrar</button>
     </div>
   </div>
 </div>
@@ -651,6 +651,20 @@ window.useDemo = function() {
   toast('Datos del calendario oficial cargados','ok');
   renderCards();
 };
+
+// ══════════════════════════════════════════════════════════
+// EVENT LISTENERS (en vez de onclick inline — más confiable en file://)
+// ══════════════════════════════════════════════════════════
+document.getElementById('btn-demo').addEventListener('click', useDemo);
+document.getElementById('btn-connect').addEventListener('click', connectFirebase);
+document.getElementById('btn-close-modal').addEventListener('click', () => {
+  document.getElementById('modal').style.display = 'none';
+});
+document.getElementById('fb-pill').addEventListener('click', () => {
+  document.getElementById('modal').style.display = 'flex';
+});
+document.getElementById('nav-dashboard-btn').addEventListener('click', () => showView('dashboard'));
+document.getElementById('nav-calendario-btn').addEventListener('click', () => showView('calendario'));
 
 // ══════════════════════════════════════════════════════════
 // INIT — carga automática sin Firebase
