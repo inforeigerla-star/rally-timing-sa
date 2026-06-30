@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calendario 2026 — Rally Timing SA</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --red:#E24B4A; --red-dark:#A32D2D; --red-bg:rgba(226,75,74,0.10);
+  --dark:#111214; --dark2:#1C1E22; --dark3:#26292F; --dark4:#32363E;
+  --border:rgba(255,255,255,0.07); --border2:rgba(255,255,255,0.12);
+  --text1:#F0F0F0; --text2:#9A9EA8; --text3:#5C6070;
+  --gold:#F5A623; --gold-bg:rgba(245,166,35,0.12);
+  --green:#27AE60; --green-bg:rgba(39,174,96,0.12);
+  --blue:#3B82F6; --blue-bg:rgba(59,130,246,0.10);
+  --purple:#8B5CF6; --purple-bg:rgba(139,92,246,0.10);
+  --orange:#F97316; --orange-bg:rgba(249,115,22,0.10);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--dark);color:var(--text1);font-family:'Inter',sans-serif;font-size:14px;line-height:1.6;}
+
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:56px;background:var(--dark2);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;}
+.logo{display:flex;align-items:center;gap:10px;}
+.logo-mark{width:28px;height:28px;background:var(--red);border-radius:6px;display:flex;align-items:center;justify-content:center;}
+.logo-mark svg{width:14px;height:14px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;}
+.logo-text{font-size:15px;font-weight:600;}
+.logo-sub{font-size:11px;color:var(--text3);}
+.back-btn{font-size:13px;color:var(--text2);background:none;border:1px solid var(--border);padding:5px 14px;border-radius:6px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px;}
+.back-btn:hover{color:var(--text1);border-color:var(--border2);}
+
+.main{max-width:1100px;margin:0 auto;padding:28px 24px 60px;}
+.page-title{font-size:24px;font-weight:600;margin-bottom:4px;}
+.page-sub{font-size:14px;color:var(--text2);margin-bottom:28px;}
+
+/* campeonato tabs */
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:24px;}
+.tab{padding:7px 18px;border-radius:999px;font-size:13px;font-weight:500;border:1px solid var(--border);color:var(--text2);background:none;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:7px;}
+.tab:hover{border-color:var(--border2);color:var(--text1);}
+.tab.active{color:#fff;border-color:transparent;}
+.tab[data-camp="ARG"].active{background:#C0392B;}
+.tab[data-camp="CODASUR"].active{background:#2980B9;}
+.tab[data-camp="WRC"].active{background:#8B5CF6;}
+.tab[data-camp="ALL"].active{background:var(--dark3);border-color:var(--border2);}
+.tab-dot{width:8px;height:8px;border-radius:50%;}
+
+/* leyenda */
+.legend{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:20px;font-size:12px;color:var(--text2);}
+.leg{display:flex;align-items:center;gap:6px;}
+.leg-dot{width:10px;height:10px;border-radius:3px;}
+
+/* timeline */
+.timeline{position:relative;}
+.month-group{margin-bottom:8px;}
+.month-label{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);padding:6px 0;margin-bottom:6px;border-bottom:1px solid var(--border);}
+.event-card{display:grid;grid-template-columns:90px 1fr auto;gap:0;background:var(--dark2);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:8px;transition:border-color .2s;}
+.event-card:hover{border-color:var(--border2);}
+.event-card.next-race{border-color:rgba(245,166,35,0.4);}
+.event-date{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:14px 12px;border-right:1px solid var(--border);min-width:90px;}
+.date-day{font-size:22px;font-weight:600;line-height:1;font-family:'JetBrains Mono',monospace;}
+.date-month{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-top:2px;}
+.date-range{font-size:10px;color:var(--text3);margin-top:2px;}
+.event-body{padding:12px 16px;flex:1;}
+.event-ronda{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;margin-bottom:3px;}
+.event-nombre{font-size:15px;font-weight:600;color:var(--text1);margin-bottom:3px;}
+.event-lugar{font-size:12px;color:var(--text2);display:flex;align-items:center;gap:5px;}
+.event-tags{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;}
+.tag{font-size:10px;font-weight:500;padding:2px 8px;border-radius:999px;letter-spacing:.03em;}
+.tag-arg{background:rgba(192,57,43,0.15);color:#E88;}
+.tag-codasur{background:rgba(41,128,185,0.15);color:#7AF;}
+.tag-wrc{background:rgba(139,92,246,0.15);color:#C8B;}
+.tag-tierra{background:rgba(139,90,43,0.15);color:#C9A;}
+.tag-asfalto{background:rgba(70,70,100,0.2);color:#AAB;}
+.tag-nieve{background:rgba(100,180,220,0.15);color:#9CF;}
+.tag-mixto{background:rgba(80,160,120,0.15);color:#8EC;}
+.event-right{display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;padding:12px 14px;min-width:120px;}
+.status-badge{font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;letter-spacing:.04em;}
+.s-done{background:var(--green-bg);color:var(--green);}
+.s-live{background:var(--red-bg);color:var(--red);display:flex;align-items:center;gap:5px;}
+.s-next{background:var(--gold-bg);color:var(--gold);}
+.s-pend{background:var(--dark3);color:var(--text3);}
+.pulse{width:6px;height:6px;border-radius:50%;background:var(--red);animation:pulse 1.2s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.event-rnd{font-size:20px;font-weight:600;color:var(--text3);font-family:'JetBrains Mono',monospace;}
+
+/* summary strip */
+.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:28px;}
+.sum-card{background:var(--dark2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;}
+.sum-val{font-size:22px;font-weight:600;}
+.sum-lbl{font-size:11px;color:var(--text3);margin-top:2px;}
+
+@media(max-width:700px){
+  .event-card{grid-template-columns:70px 1fr;}
+  .event-right{display:none;}
+  .summary{grid-template-columns:1fr 1fr;}
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="logo">
+    <div class="logo-mark"><svg viewBox="0 0 14 14"><path d="M2 12L7 2L12 12"/><path d="M4.5 8L9.5 8"/></svg></div>
+    <div><div class="logo-text">Rally Timing SA</div><div class="logo-sub">Calendarios 2026</div></div>
+  </div>
+  <a href="rally-dashboard.html" class="back-btn">← Dashboard</a>
+</header>
+
+<main class="main">
+  <div class="page-title">Calendarios 2026</div>
+  <div class="page-sub">Datos oficiales — Rally Argentino · Codasur · WRC · Actualizado junio 2026</div>
+
+  <div class="summary">
+    <div class="sum-card"><div class="sum-val" id="s-total">0</div><div class="sum-lbl">Eventos totales</div></div>
+    <div class="sum-card"><div class="sum-val" style="color:var(--green)" id="s-done">0</div><div class="sum-lbl">Disputados</div></div>
+    <div class="sum-card"><div class="sum-val" style="color:var(--gold)" id="s-next">0</div><div class="sum-lbl">Próximos</div></div>
+    <div class="sum-card"><div class="sum-val" style="color:var(--text3)" id="s-paises">0</div><div class="sum-lbl">Países sede</div></div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" data-camp="ALL" onclick="setTab(this)"><span class="tab-dot" style="background:#888;"></span>Todos</button>
+    <button class="tab" data-camp="ARG"     onclick="setTab(this)"><span class="tab-dot" style="background:#C0392B;"></span>Rally Argentino</button>
+    <button class="tab" data-camp="CODASUR" onclick="setTab(this)"><span class="tab-dot" style="background:#2980B9;"></span>Codasur</button>
+    <button class="tab" data-camp="WRC"     onclick="setTab(this)"><span class="tab-dot" style="background:#8B5CF6;"></span>WRC</button>
+  </div>
+
+  <div class="legend">
+    <div class="leg"><div class="leg-dot" style="background:var(--green);"></div>Disputado</div>
+    <div class="leg"><div class="leg-dot" style="background:var(--gold);"></div>Próximo</div>
+    <div class="leg"><div class="leg-dot" style="background:var(--dark4);"></div>Pendiente</div>
+    <div class="leg"><div class="leg-dot" style="background:#8B4513;"></div>Tierra</div>
+    <div class="leg"><div class="leg-dot" style="background:#444466;"></div>Asfalto</div>
+    <div class="leg"><div class="leg-dot" style="background:#4699BB;"></div>Nieve/Hielo</div>
+  </div>
+
+  <div class="timeline" id="timeline"></div>
+</main>
+
+<script>
+// ── DATOS REALES OBTENIDOS DE FUENTES OFICIALES ───────────────
+// Fuentes: rallyargentino.com, fiarallycodasur.com, wrc.com (junio 2026)
+const EVENTOS = [
+  // ── RALLY ARGENTINO 2026 (9 fechas) ──────────────────────
+  { camp:'ARG', ronda:1, nombre:'Rally Pagos del Tuyú', lugar:'General Madariaga', pais:'🇦🇷 Buenos Aires, AR', fecha_ini:'2026-02-27', fecha_fin:'2026-03-01', superficie:'tierra', estado:'done' },
+  { camp:'ARG', ronda:2, nombre:'Rally de Córdoba', lugar:'Córdoba', pais:'🇦🇷 Córdoba, AR', fecha_ini:'2026-04-17', fecha_fin:'2026-04-19', superficie:'tierra', estado:'done', codasur:true },
+  { camp:'ARG', ronda:3, nombre:'Rally del Petróleo y los Dinosaurios', lugar:'Cutral Có / Plaza Huincul', pais:'🇦🇷 Neuquén, AR', fecha_ini:'2026-05-22', fecha_fin:'2026-05-24', superficie:'tierra', estado:'done' },
+  { camp:'ARG', ronda:4, nombre:'Rally del Poncho', lugar:'Catamarca', pais:'🇦🇷 Catamarca, AR', fecha_ini:'2026-06-26', fecha_fin:'2026-06-28', superficie:'tierra', estado:'next' },
+  { camp:'ARG', ronda:5, nombre:'Rally del Jaaukanigás', lugar:'Santa Fe', pais:'🇦🇷 Santa Fe, AR', fecha_ini:'2026-07-31', fecha_fin:'2026-08-02', superficie:'tierra', estado:'pend' },
+  { camp:'ARG', ronda:6, nombre:'Vuelta de la Manzana', lugar:'Río Negro', pais:'🇦🇷 Río Negro, AR', fecha_ini:'2026-09-04', fecha_fin:'2026-09-06', superficie:'tierra', estado:'pend' },
+  { camp:'ARG', ronda:7, nombre:'Rally de Diamante y Valle María', lugar:'Entre Ríos', pais:'🇦🇷 Entre Ríos, AR', fecha_ini:'2026-10-02', fecha_fin:'2026-10-04', superficie:'tierra', estado:'pend' },
+  { camp:'ARG', ronda:8, nombre:'Rally de San Luis', lugar:'San Luis', pais:'🇦🇷 San Luis, AR', fecha_ini:'2026-11-06', fecha_fin:'2026-11-08', superficie:'tierra', estado:'pend' },
+  { camp:'ARG', ronda:9, nombre:'Gran Premio Coronación', lugar:'A confirmar', pais:'🇦🇷 Argentina', fecha_ini:'2026-12-11', fecha_fin:'2026-12-13', superficie:'tierra', estado:'pend' },
+
+  // ── CODASUR 2026 (5 fechas) ───────────────────────────────
+  { camp:'CODASUR', ronda:1, nombre:'Rally de Erechim', lugar:'Erechim', pais:'🇧🇷 Rio Grande do Sul, BR', fecha_ini:'2026-03-20', fecha_fin:'2026-03-22', superficie:'tierra', estado:'done' },
+  { camp:'CODASUR', ronda:2, nombre:'Rally de Córdoba', lugar:'Córdoba', pais:'🇦🇷 Córdoba, AR', fecha_ini:'2026-04-17', fecha_fin:'2026-04-19', superficie:'tierra', estado:'done', arg:true },
+  { camp:'CODASUR', ronda:3, nombre:'Rally del Paraguay', lugar:'Villarrica / Guairá', pais:'🇵🇾 Guairá, PY', fecha_ini:'2026-05-30', fecha_fin:'2026-05-31', superficie:'tierra', estado:'done' },
+  { camp:'CODASUR', ronda:4, nombre:'Rally de Bolivia', lugar:'Sucre', pais:'🇧🇴 Chuquisaca, BO', fecha_ini:'2026-07-24', fecha_fin:'2026-07-26', superficie:'tierra', estado:'pend' },
+  { camp:'CODASUR', ronda:5, nombre:'Rally del Atlántico', lugar:'Uruguay', pais:'🇺🇾 Uruguay', fecha_ini:'2026-11-20', fecha_fin:'2026-11-22', superficie:'tierra', estado:'pend' },
+
+  // ── WRC 2026 (14 fechas) ──────────────────────────────────
+  { camp:'WRC', ronda:1,  nombre:'Rallye Monte-Carlo',      lugar:'Gap / Monaco',        pais:'🇲🇨 Monaco / Francia',   fecha_ini:'2026-01-22', fecha_fin:'2026-01-25', superficie:'asfalto', estado:'done' },
+  { camp:'WRC', ronda:2,  nombre:'Rally Sweden',            lugar:'Umeå',                pais:'🇸🇪 Suecia',             fecha_ini:'2026-02-12', fecha_fin:'2026-02-15', superficie:'nieve',   estado:'done' },
+  { camp:'WRC', ronda:3,  nombre:'Safari Rally Kenya',      lugar:'Naivasha',            pais:'🇰🇪 Kenia',              fecha_ini:'2026-03-12', fecha_fin:'2026-03-15', superficie:'tierra', estado:'done' },
+  { camp:'WRC', ronda:4,  nombre:'Croatia Rally',           lugar:'Rijeka',              pais:'🇭🇷 Croacia',            fecha_ini:'2026-04-09', fecha_fin:'2026-04-12', superficie:'asfalto', estado:'done' },
+  { camp:'WRC', ronda:5,  nombre:'Rally Islas Canarias',    lugar:'Las Palmas',          pais:'🇪🇸 España',             fecha_ini:'2026-04-23', fecha_fin:'2026-04-26', superficie:'asfalto', estado:'done' },
+  { camp:'WRC', ronda:6,  nombre:'Rally de Portugal',       lugar:'Matosinhos',          pais:'🇵🇹 Portugal',           fecha_ini:'2026-05-07', fecha_fin:'2026-05-10', superficie:'tierra', estado:'done' },
+  { camp:'WRC', ronda:7,  nombre:'Rally Japan',             lugar:'Toyota / Aichi',      pais:'🇯🇵 Japón',              fecha_ini:'2026-05-28', fecha_fin:'2026-05-31', superficie:'asfalto', estado:'done' },
+  { camp:'WRC', ronda:8,  nombre:'Acropolis Rally Greece',  lugar:'Loutraki',            pais:'🇬🇷 Grecia',             fecha_ini:'2026-06-25', fecha_fin:'2026-06-28', superficie:'tierra', estado:'next' },
+  { camp:'WRC', ronda:9,  nombre:'Rally Estonia',           lugar:'Tartu',               pais:'🇪🇪 Estonia',            fecha_ini:'2026-07-16', fecha_fin:'2026-07-19', superficie:'tierra', estado:'pend' },
+  { camp:'WRC', ronda:10, nombre:'Rally Finland',           lugar:'Jyväskylä',           pais:'🇫🇮 Finlandia',          fecha_ini:'2026-07-30', fecha_fin:'2026-08-02', superficie:'tierra', estado:'pend' },
+  { camp:'WRC', ronda:11, nombre:'Rally del Paraguay',      lugar:'A confirmar',         pais:'🇵🇾 Paraguay',           fecha_ini:'2026-08-27', fecha_fin:'2026-08-30', superficie:'tierra', estado:'pend' },
+  { camp:'WRC', ronda:12, nombre:'Rally Chile',             lugar:'Concepción',          pais:'🇨🇱 Chile',              fecha_ini:'2026-09-10', fecha_fin:'2026-09-13', superficie:'tierra', estado:'pend' },
+  { camp:'WRC', ronda:13, nombre:'Rally Italia Sardegna',   lugar:'Cerdeña',             pais:'🇮🇹 Italia',             fecha_ini:'2026-10-01', fecha_fin:'2026-10-04', superficie:'tierra', estado:'pend' },
+  { camp:'WRC', ronda:14, nombre:'Rally Arabia Saudita',    lugar:'A confirmar',         pais:'🇸🇦 Arabia Saudita',     fecha_ini:'2026-11-12', fecha_fin:'2026-11-15', superficie:'asfalto', estado:'pend' },
+];
+
+const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const CAMP_COLOR = { ARG:'#C0392B', CODASUR:'#2980B9', WRC:'#8B5CF6' };
+let filtro = 'ALL';
+
+function setTab(btn) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  filtro = btn.dataset.camp;
+  render();
+}
+window.setTab = setTab;
+
+function statusLabel(e) {
+  const today = new Date('2026-06-22');
+  const ini = new Date(e.fecha_ini);
+  const fin = new Date(e.fecha_fin);
+  if (today >= ini && today <= fin) return 'live';
+  return e.estado;
+}
+
+function render() {
+  const filtered = filtro === 'ALL' ? EVENTOS : EVENTOS.filter(e => e.camp === filtro);
+  filtered.sort((a,b) => a.fecha_ini.localeCompare(b.fecha_ini));
+
+  // summary
+  const done = filtered.filter(e => e.estado === 'done').length;
+  const next = filtered.filter(e => e.estado === 'next').length;
+  const paises = new Set(filtered.map(e => e.pais.split(',')[0].replace(/🇦🇷|🇧🇷|🇨🇱|🇵🇾|🇺🇾|🇧🇴|🇲🇨|🇸🇪|🇰🇪|🇭🇷|🇪🇸|🇵🇹|🇯🇵|🇬🇷|🇪🇪|🇫🇮|🇮🇹|🇸🇦/g,'').trim())).size;
+  document.getElementById('s-total').textContent = filtered.length;
+  document.getElementById('s-done').textContent  = done;
+  document.getElementById('s-next').textContent  = next;
+  document.getElementById('s-paises').textContent = paises;
+
+  // group by month
+  const byMonth = {};
+  filtered.forEach(e => {
+    const m = parseInt(e.fecha_ini.split('-')[1]) - 1;
+    if (!byMonth[m]) byMonth[m] = [];
+    byMonth[m].push(e);
+  });
+
+  const tl = document.getElementById('timeline');
+  tl.innerHTML = '';
+  Object.keys(byMonth).sort((a,b)=>a-b).forEach(m => {
+    const div = document.createElement('div');
+    div.className = 'month-group';
+    const events = byMonth[m].map(e => {
+      const ini = new Date(e.fecha_ini);
+      const fin = new Date(e.fecha_fin);
+      const st  = statusLabel(e);
+      const diaIni = ini.getDate();
+      const diaFin = fin.getDate();
+      const mes    = MESES[parseInt(e.fecha_ini.split('-')[1])-1].substring(0,3).toUpperCase();
+      const color  = CAMP_COLOR[e.camp];
+      const statusBadge = st === 'done' ? `<span class="status-badge s-done">✓ Disputado</span>`
+        : st === 'live' ? `<span class="status-badge s-live"><span class="pulse"></span>En vivo</span>`
+        : st === 'next' ? `<span class="status-badge s-next">⬤ Próximo</span>`
+        : `<span class="status-badge s-pend">Pendiente</span>`;
+      const supTag = `<span class="tag tag-${e.superficie}">${e.superficie.charAt(0).toUpperCase()+e.superficie.slice(1)}</span>`;
+      const campTag = `<span class="tag tag-${e.camp.toLowerCase()}" style="background:${color}22;color:${color}cc;">${e.camp}</span>`;
+      const coTag = e.codasur ? `<span class="tag tag-codasur">+ Codasur</span>` : '';
+      const argTag = e.arg ? `<span class="tag tag-arg">+ ARG</span>` : '';
+      return `
+        <div class="event-card${st==='next'?' next-race':''}">
+          <div class="event-date" style="border-left:3px solid ${color};">
+            <div class="date-day">${diaIni}</div>
+            <div class="date-month">${mes}</div>
+            ${diaFin !== diaIni ? `<div class="date-range">al ${diaFin}</div>` : ''}
+          </div>
+          <div class="event-body">
+            <div class="event-ronda" style="color:${color};">R${e.ronda} · ${e.camp}</div>
+            <div class="event-nombre">${e.nombre}</div>
+            <div class="event-lugar">${e.pais}</div>
+            <div class="event-tags">${campTag}${supTag}${coTag}${argTag}</div>
+          </div>
+          <div class="event-right">
+            ${statusBadge}
+            <div class="event-rnd">${String(e.ronda).padStart(2,'0')}</div>
+          </div>
+        </div>`;
+    }).join('');
+    div.innerHTML = `<div class="month-label">${MESES[m]} 2026</div>${events}`;
+    tl.appendChild(div);
+  });
+}
+
+render();
+</script>
+</body>
+</html>

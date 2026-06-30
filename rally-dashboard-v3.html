@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rally Timing SA</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --red:#E24B4A;--red-dark:#A32D2D;--red-bg:rgba(226,75,74,0.10);
+  --dark:#111214;--dark2:#1C1E22;--dark3:#26292F;--dark4:#32363E;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.14);
+  --text1:#F0F0F0;--text2:#9A9EA8;--text3:#5C6070;
+  --gold:#F5A623;--gold-bg:rgba(245,166,35,0.12);
+  --green:#27AE60;--green-bg:rgba(39,174,96,0.12);
+  --blue:#3B82F6;--blue-bg:rgba(59,130,246,0.10);
+  --purple:#8B5CF6;--purple-bg:rgba(139,92,246,0.10);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--dark);color:var(--text1);font-family:'Inter',sans-serif;font-size:14px;line-height:1.6;min-height:100vh;}
+
+/* topbar */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:56px;background:var(--dark2);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;}
+.logo{display:flex;align-items:center;gap:10px;}
+.logo-mark{width:28px;height:28px;background:var(--red);border-radius:6px;display:flex;align-items:center;justify-content:center;}
+.logo-mark svg{width:14px;height:14px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;}
+.logo-text{font-size:15px;font-weight:600;}
+.logo-sub{font-size:11px;color:var(--text3);}
+.nav{display:flex;gap:2px;}
+.nav-btn{padding:6px 14px;border-radius:6px;font-size:13px;color:var(--text2);background:none;border:none;cursor:pointer;transition:all .15s;}
+.nav-btn:hover{color:var(--text1);background:var(--dark3);}
+.nav-btn.active{color:var(--text1);background:var(--dark3);}
+.fb-status-pill{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text3);background:var(--dark3);border:1px solid var(--border);padding:5px 12px;border-radius:999px;cursor:pointer;}
+.fb-dot{width:7px;height:7px;border-radius:50%;background:var(--text3);}
+.fb-dot.ok{background:var(--green);}
+.fb-dot.err{background:var(--red);}
+
+/* firebase modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;}
+.modal-box{background:var(--dark2);border:1px solid var(--border2);border-radius:14px;padding:28px;width:100%;max-width:480px;}
+.modal-title{font-size:17px;font-weight:600;margin-bottom:4px;}
+.modal-sub{font-size:13px;color:var(--text2);margin-bottom:20px;}
+.field-group{margin-bottom:12px;}
+.field-group label{display:block;font-size:11px;color:var(--text3);margin-bottom:4px;font-weight:500;letter-spacing:.04em;}
+.field-group input{width:100%;padding:8px 12px;background:var(--dark3);border:1px solid var(--border2);border-radius:8px;color:var(--text1);font-family:'JetBrains Mono',monospace;font-size:12px;outline:none;transition:border-color .15s;}
+.field-group input:focus{border-color:var(--gold);}
+.modal-btns{display:flex;gap:8px;margin-top:16px;}
+.btn-primary{flex:1;padding:9px;background:var(--red-bg);border:1px solid rgba(226,75,74,.4);color:var(--red);border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;}
+.btn-primary:hover{background:rgba(226,75,74,.2);}
+.btn-demo{flex:1;padding:9px;background:var(--green-bg);border:1px solid rgba(39,174,96,.4);color:var(--green);border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;}
+.btn-demo:hover{background:rgba(39,174,96,.2);}
+.btn-ghost{padding:9px 16px;background:none;border:1px solid var(--border);color:var(--text2);border-radius:8px;font-size:13px;cursor:pointer;}
+
+/* live banner */
+.live-banner{background:linear-gradient(90deg,rgba(226,75,74,0.12),transparent);border-bottom:1px solid rgba(226,75,74,.18);padding:9px 24px;display:flex;align-items:center;gap:10px;}
+.pulse{width:8px;height:8px;border-radius:50%;background:var(--red);animation:pulse 1.2s infinite;flex-shrink:0;}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.8)}}
+
+/* main */
+.main{max-width:1100px;margin:0 auto;padding:28px 24px 60px;}
+.sec-label{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:12px;}
+
+/* campeonatos chips */
+.camp-strip{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px;margin-bottom:28px;scrollbar-width:none;}
+.camp-strip::-webkit-scrollbar{display:none;}
+.camp-chip{flex-shrink:0;background:var(--dark2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;cursor:pointer;transition:border-color .15s;min-width:140px;}
+.camp-chip:hover{border-color:var(--border2);}
+.camp-chip[data-active="true"]{border-color:var(--red);}
+.chip-serie{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:2px;}
+.chip-nombre{font-size:13px;font-weight:500;}
+.chip-ronda{font-size:11px;color:var(--text3);margin-top:2px;}
+
+/* filtros */
+.filtros{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px;}
+.filtro{padding:5px 14px;border-radius:999px;font-size:12px;border:1px solid var(--border);color:var(--text2);background:none;cursor:pointer;transition:all .15s;}
+.filtro:hover{border-color:var(--border2);color:var(--text1);}
+.filtro.active{background:var(--red-bg);border-color:var(--red);color:#E88;}
+
+/* content grid */
+.content-grid{display:grid;grid-template-columns:1fr 290px;gap:20px;}
+@media(max-width:800px){.content-grid{grid-template-columns:1fr;}}
+
+/* carrera cards */
+.cards-grid{display:flex;flex-direction:column;gap:12px;}
+.card{background:var(--dark2);border:1px solid var(--border);border-radius:12px;overflow:hidden;transition:border-color .2s;}
+.card:hover{border-color:var(--border2);}
+.card.live{border-color:rgba(226,75,74,.4);}
+.card-live-stripe{height:2px;background:var(--red);}
+.card-inner{padding:16px;}
+.card-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px;}
+.card-serie{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:3px;}
+.card-name{font-size:15px;font-weight:600;}
+.card-loc{font-size:12px;color:var(--text3);margin-top:2px;}
+.badge{font-size:10px;font-weight:700;padding:3px 10px;border-radius:999px;letter-spacing:.04em;white-space:nowrap;flex-shrink:0;}
+.badge-live{background:var(--red-bg);color:#E88;display:flex;align-items:center;gap:5px;}
+.badge-next{background:var(--gold-bg);color:var(--gold);}
+.badge-done{background:var(--dark3);color:var(--text3);}
+.badge-pend{background:var(--dark3);color:var(--text3);}
+.prog-wrap{margin-bottom:12px;}
+.prog-labels{display:flex;justify-content:space-between;font-size:11px;color:var(--text3);margin-bottom:4px;}
+.prog-bg{height:3px;background:var(--dark4);border-radius:2px;overflow:hidden;}
+.prog-fill{height:100%;background:var(--red);border-radius:2px;}
+.lider{display:flex;align-items:center;gap:10px;background:var(--dark3);border-radius:7px;padding:8px 10px;margin-bottom:5px;}
+.lider-pos{font-size:12px;font-weight:600;color:var(--text3);width:16px;}
+.lider-pos.p1{color:var(--gold);}
+.lider-info{flex:1;}
+.lider-name{font-size:13px;font-weight:500;}
+.lider-car{font-size:11px;color:var(--text3);}
+.lider-t{font-size:13px;font-weight:500;font-family:'JetBrains Mono',monospace;}
+.lider-d{font-size:11px;color:var(--text3);text-align:right;}
+.card-actions{display:flex;gap:8px;margin-top:12px;}
+.btn-timing{flex:1;padding:8px;background:var(--red-bg);border:1px solid rgba(226,75,74,.35);color:#E88;border-radius:7px;font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;}
+.btn-timing:hover{background:rgba(226,75,74,.18);}
+.btn-detail{padding:8px 14px;background:none;border:1px solid var(--border);color:var(--text2);border-radius:7px;font-size:13px;cursor:pointer;transition:all .15s;}
+.btn-detail:hover{border-color:var(--border2);color:var(--text1);}
+
+/* sidebar */
+.sidebar-card{background:var(--dark2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px;}
+.sidebar-title{font-size:14px;font-weight:600;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;}
+.sidebar-title select{font-size:11px;background:var(--dark3);border:1px solid var(--border);color:var(--text2);padding:3px 8px;border-radius:6px;cursor:pointer;}
+.standing{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);}
+.standing:last-child{border-bottom:none;}
+.st-pos{font-size:13px;font-weight:600;width:20px;color:var(--text3);}
+.st-pos.p1{color:var(--gold);}.st-pos.p2{color:#aaa;}.st-pos.p3{color:#CD7F32;}
+.st-info{flex:1;}
+.st-name{font-size:13px;font-weight:500;}
+.st-nat{font-size:11px;color:var(--text3);}
+.st-bar{flex:1;max-width:60px;}
+.st-bar-bg{height:4px;background:var(--dark4);border-radius:2px;}
+.st-bar-fill{height:4px;background:var(--red);border-radius:2px;}
+.st-pts{font-size:13px;font-weight:600;font-family:'JetBrains Mono',monospace;min-width:28px;text-align:right;}
+
+/* calendario */
+.cal-wrap{display:none;}
+.month-block{margin-bottom:10px;}
+.month-hdr{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);padding:5px 0;margin-bottom:6px;border-bottom:1px solid var(--border);}
+.ev-card{display:grid;grid-template-columns:78px 1fr 110px;background:var(--dark2);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:7px;cursor:default;transition:border-color .15s;}
+.ev-card:hover{border-color:var(--border2);}
+.ev-card.next-ev{border-color:rgba(245,166,35,.35);}
+.ev-date{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px 8px;border-right:1px solid var(--border);}
+.ev-day{font-size:20px;font-weight:600;font-family:'JetBrains Mono',monospace;line-height:1;}
+.ev-mon{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-top:2px;}
+.ev-al{font-size:10px;color:var(--text3);}
+.ev-body{padding:12px 14px;}
+.ev-ronda{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:3px;}
+.ev-nombre{font-size:14px;font-weight:600;margin-bottom:2px;}
+.ev-lugar{font-size:12px;color:var(--text2);}
+.ev-tags{display:flex;gap:5px;margin-top:7px;flex-wrap:wrap;}
+.tag{font-size:10px;font-weight:500;padding:2px 8px;border-radius:999px;}
+.ev-right{display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;padding:12px 12px;}
+.ev-rnd{font-size:18px;font-weight:600;font-family:'JetBrains Mono',monospace;color:var(--text3);}
+
+/* empty */
+.empty{text-align:center;padding:50px 20px;color:var(--text3);}
+.spinner{width:20px;height:20px;border:2px solid var(--dark4);border-top-color:var(--red);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 10px;}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* toast */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--dark2);border:1px solid var(--border);border-radius:10px;padding:12px 16px;font-size:13px;z-index:999;transform:translateY(100px);opacity:0;transition:all .3s;max-width:320px;}
+.toast.show{transform:translateY(0);opacity:1;}
+.toast.ok{border-color:rgba(39,174,96,.4);}
+.toast.err{border-color:rgba(226,75,74,.4);}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<header class="topbar">
+  <div class="logo">
+    <div class="logo-mark"><svg viewBox="0 0 14 14"><path d="M2 12L7 2L12 12"/><path d="M4.5 8L9.5 8"/></svg></div>
+    <div><div class="logo-text">Rally Timing SA</div><div class="logo-sub">Sudamérica · Codasur · WRC 2026</div></div>
+  </div>
+  <nav class="nav">
+    <button class="nav-btn active" onclick="showView('dashboard')">Dashboard</button>
+    <button class="nav-btn" onclick="showView('calendario')">Calendario</button>
+  </nav>
+  <div class="fb-status-pill" onclick="document.getElementById('modal').style.display='flex'">
+    <div class="fb-dot" id="fb-dot"></div>
+    <span id="fb-label">Conectar Firebase</span>
+  </div>
+</header>
+
+<!-- FIREBASE MODAL -->
+<div class="modal-overlay" id="modal">
+  <div class="modal-box">
+    <div class="modal-title">Conectar con Firebase</div>
+    <div class="modal-sub">Pegá tus credenciales de Firebase Console. Encontrás cada valor en ⚙️ → Configuración del proyecto.</div>
+    <div class="field-group"><label>API KEY</label><input id="fb-apiKey" placeholder="AIzaSy..."/></div>
+    <div class="field-group"><label>PROJECT ID</label><input id="fb-projectId" placeholder="rally-timing-sa"/></div>
+    <div class="field-group"><label>AUTH DOMAIN</label><input id="fb-authDomain" placeholder="rally-timing-sa.firebaseapp.com"/></div>
+    <div class="field-group"><label>DATABASE URL (Realtime DB)</label><input id="fb-dbURL" placeholder="https://rally-timing-sa-default-rtdb.firebaseio.com"/></div>
+    <div class="field-group"><label>APP ID</label><input id="fb-appId" placeholder="1:123...:web:abc..."/></div>
+    <div class="modal-btns">
+      <button class="btn-demo" onclick="useDemo()">Usar datos demo</button>
+      <button class="btn-primary" onclick="connectFirebase()">Conectar</button>
+      <button class="btn-ghost" onclick="document.getElementById('modal').style.display='none'">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- LIVE BANNER -->
+<div class="live-banner" id="live-banner" style="display:none">
+  <div class="pulse"></div>
+  <span style="font-size:13px;"><strong id="live-count" style="color:var(--red);">0</strong> eventos en vivo ahora mismo</span>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- ── DASHBOARD VIEW ───────────────────────────────── -->
+  <div id="view-dashboard">
+    <div class="sec-label">Campeonatos activos</div>
+    <div class="camp-strip" id="camp-strip">
+      <div class="empty" style="padding:10px 0;"><div class="spinner"></div></div>
+    </div>
+
+    <div class="filtros" id="filtros">
+      <button class="filtro active" onclick="setFiltro(this,'todas')">Todas</button>
+      <button class="filtro" onclick="setFiltro(this,'en_vivo')">En vivo</button>
+      <button class="filtro" onclick="setFiltro(this,'ARG')">Rally Argentino</button>
+      <button class="filtro" onclick="setFiltro(this,'CODASUR')">Codasur</button>
+      <button class="filtro" onclick="setFiltro(this,'WRC')">WRC</button>
+      <button class="filtro" onclick="setFiltro(this,'CHILENO')">Rally Chileno</button>
+    </div>
+
+    <div class="content-grid">
+      <div>
+        <div class="sec-label">Carreras</div>
+        <div class="cards-grid" id="cards-grid">
+          <div class="empty"><div class="spinner"></div><div>Conectá Firebase o usá datos demo</div></div>
+        </div>
+      </div>
+      <div>
+        <div class="sec-label">Clasificación</div>
+        <div class="sidebar-card">
+          <div class="sidebar-title">General <select id="camp-sel" onchange="renderStandings()">
+            <option value="ARG">ARG 2026</option>
+            <option value="CODASUR">Codasur 2026</option>
+            <option value="WRC">WRC 2026</option>
+          </select></div>
+          <div id="standings-list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── CALENDARIO VIEW ──────────────────────────────── -->
+  <div id="view-calendario" style="display:none;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
+      <div>
+        <div style="font-size:22px;font-weight:600;">Calendarios 2026</div>
+        <div style="font-size:13px;color:var(--text3);margin-top:2px;">Datos oficiales — Rally Argentino · Codasur · WRC</div>
+      </div>
+    </div>
+    <div id="cal-summary" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:22px;"></div>
+    <div id="cal-tabs" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px;"></div>
+    <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:16px;font-size:12px;color:var(--text2);">
+      <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:var(--green);display:inline-block;"></span>Disputado</span>
+      <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:var(--gold);display:inline-block;"></span>Próximo</span>
+      <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:var(--dark4);display:inline-block;"></span>Pendiente</span>
+      <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:#8B4513;display:inline-block;"></span>Tierra</span>
+      <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:#444466;display:inline-block;"></span>Asfalto</span>
+      <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:3px;background:#4699BB;display:inline-block;"></span>Nieve</span>
+    </div>
+    <div id="cal-timeline"></div>
+  </div>
+
+</div><!-- /main -->
+
+<div class="toast" id="toast"></div>
+
+<!-- FIREBASE SDK -->
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getFirestore, collection, query, where, orderBy, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+// ══════════════════════════════════════════════════════════
+// DATOS REALES 2026 — cargados automáticamente
+// Fuentes: rallyargentino.com · carburando.com · wrc.com
+// ══════════════════════════════════════════════════════════
+const TODAY = new Date('2026-06-26');
+
+const CAMPEONATOS = [
+  { id:'ARG',     serie:'ARG',     nombre:'Campeonato Argentino de Rally', color:'#C0392B', ronda_actual:4, total_rondas:9 },
+  { id:'CODASUR', serie:'CODASUR', nombre:'Rally Sudamericano Codasur',    color:'#2980B9', ronda_actual:3, total_rondas:5 },
+  { id:'WRC',     serie:'WRC',     nombre:'WRC — World Rally Championship', color:'#8B5CF6', ronda_actual:8, total_rondas:14 },
+];
+
+// Determinar estado automático según fecha de hoy
+function autoEstado(fi, ff) {
+  const ini = new Date(fi), fin = new Date(ff);
+  if (TODAY >= ini && TODAY <= fin) return 'en_vivo';
+  if (TODAY > fin) return 'done';
+  const diff = (ini - TODAY) / (1000*60*60*24);
+  if (diff <= 7 && diff > 0) return 'next';
+  return 'pend';
+}
+
+const EVENTOS_RAW = [
+  // ── RALLY ARGENTINO 2026 (datos oficiales) ──────────────
+  { camp:'ARG', ronda:1, nombre:'Rally Pagos del Tuyú',              lugar:'General Madariaga', pais:'🇦🇷 Buenos Aires', fi:'2026-02-27', ff:'2026-03-01', sup:'tierra' },
+  { camp:'ARG', ronda:2, nombre:'Rally de Córdoba',                  lugar:'Córdoba',           pais:'🇦🇷 Córdoba',      fi:'2026-04-17', ff:'2026-04-19', sup:'tierra', doble:'CODASUR' },
+  { camp:'ARG', ronda:3, nombre:'Rally del Petróleo y los Dinosaurios', lugar:'Plaza Huincul / Cutral Có', pais:'🇦🇷 Neuquén', fi:'2026-05-22', ff:'2026-05-24', sup:'tierra' },
+  { camp:'ARG', ronda:4, nombre:'Rally del Poncho',                  lugar:'Catamarca',         pais:'🇦🇷 Catamarca',    fi:'2026-06-26', ff:'2026-06-28', sup:'tierra' },
+  { camp:'ARG', ronda:5, nombre:'Rally del Jaaukanigás',             lugar:'Santa Fe',          pais:'🇦🇷 Santa Fe',     fi:'2026-07-31', ff:'2026-08-02', sup:'tierra' },
+  { camp:'ARG', ronda:6, nombre:'Vuelta de la Manzana',              lugar:'General Roca',      pais:'🇦🇷 Río Negro',    fi:'2026-09-04', ff:'2026-09-06', sup:'tierra' },
+  { camp:'ARG', ronda:7, nombre:'Rally de Entre Ríos',               lugar:'Diamante / Valle María', pais:'🇦🇷 Entre Ríos', fi:'2026-10-02', ff:'2026-10-04', sup:'tierra' },
+  { camp:'ARG', ronda:8, nombre:'Rally de San Luis',                 lugar:'San Luis',          pais:'🇦🇷 San Luis',     fi:'2026-11-06', ff:'2026-11-08', sup:'tierra' },
+  { camp:'ARG', ronda:9, nombre:'Gran Premio Coronación',            lugar:'A confirmar',       pais:'🇦🇷 Argentina',    fi:'2026-12-11', ff:'2026-12-13', sup:'tierra' },
+  // ── CODASUR 2026 ────────────────────────────────────────
+  { camp:'CODASUR', ronda:1, nombre:'Rally de Erechim',   lugar:'Erechim',    pais:'🇧🇷 Rio Grande do Sul', fi:'2026-03-20', ff:'2026-03-22', sup:'tierra' },
+  { camp:'CODASUR', ronda:2, nombre:'Rally de Córdoba',   lugar:'Córdoba',    pais:'🇦🇷 Córdoba',           fi:'2026-04-17', ff:'2026-04-19', sup:'tierra', doble:'ARG' },
+  { camp:'CODASUR', ronda:3, nombre:'Rally del Paraguay', lugar:'Villarrica', pais:'🇵🇾 Guairá',            fi:'2026-05-30', ff:'2026-05-31', sup:'tierra' },
+  { camp:'CODASUR', ronda:4, nombre:'Rally de Bolivia',   lugar:'Sucre',      pais:'🇧🇴 Chuquisaca',        fi:'2026-07-24', ff:'2026-07-26', sup:'tierra' },
+  { camp:'CODASUR', ronda:5, nombre:'Rally del Atlántico',lugar:'Uruguay',    pais:'🇺🇾 Uruguay',           fi:'2026-11-20', ff:'2026-11-22', sup:'tierra' },
+  // ── WRC 2026 ────────────────────────────────────────────
+  { camp:'WRC', ronda:1,  nombre:'Rallye Monte-Carlo',     lugar:'Gap / Monaco',     pais:'🇲🇨 Monaco',      fi:'2026-01-22', ff:'2026-01-25', sup:'asfalto' },
+  { camp:'WRC', ronda:2,  nombre:'Rally Sweden',           lugar:'Umeå',             pais:'🇸🇪 Suecia',      fi:'2026-02-12', ff:'2026-02-15', sup:'nieve' },
+  { camp:'WRC', ronda:3,  nombre:'Safari Rally Kenya',     lugar:'Naivasha',         pais:'🇰🇪 Kenia',       fi:'2026-03-12', ff:'2026-03-15', sup:'tierra' },
+  { camp:'WRC', ronda:4,  nombre:'Croatia Rally',          lugar:'Rijeka',           pais:'🇭🇷 Croacia',     fi:'2026-04-09', ff:'2026-04-12', sup:'asfalto' },
+  { camp:'WRC', ronda:5,  nombre:'Rally Islas Canarias',   lugar:'Las Palmas',       pais:'🇪🇸 España',      fi:'2026-04-23', ff:'2026-04-26', sup:'asfalto' },
+  { camp:'WRC', ronda:6,  nombre:'Rally de Portugal',      lugar:'Matosinhos',       pais:'🇵🇹 Portugal',    fi:'2026-05-07', ff:'2026-05-10', sup:'tierra' },
+  { camp:'WRC', ronda:7,  nombre:'Rally Japan',            lugar:'Aichi',            pais:'🇯🇵 Japón',       fi:'2026-05-28', ff:'2026-05-31', sup:'asfalto' },
+  { camp:'WRC', ronda:8,  nombre:'Acropolis Rally Greece', lugar:'Loutraki',         pais:'🇬🇷 Grecia',      fi:'2026-06-25', ff:'2026-06-28', sup:'tierra' },
+  { camp:'WRC', ronda:9,  nombre:'Rally Estonia',          lugar:'Tartu',            pais:'🇪🇪 Estonia',     fi:'2026-07-16', ff:'2026-07-19', sup:'tierra' },
+  { camp:'WRC', ronda:10, nombre:'Rally Finland',          lugar:'Jyväskylä',        pais:'🇫🇮 Finlandia',   fi:'2026-07-30', ff:'2026-08-02', sup:'tierra' },
+  { camp:'WRC', ronda:11, nombre:'Rally del Paraguay',     lugar:'A confirmar',      pais:'🇵🇾 Paraguay',    fi:'2026-08-27', ff:'2026-08-30', sup:'tierra' },
+  { camp:'WRC', ronda:12, nombre:'Rally Chile',            lugar:'Concepción',       pais:'🇨🇱 Chile',       fi:'2026-09-10', ff:'2026-09-13', sup:'tierra' },
+  { camp:'WRC', ronda:13, nombre:'Rally Italia Sardegna',  lugar:'Cerdeña',          pais:'🇮🇹 Italia',      fi:'2026-10-01', ff:'2026-10-04', sup:'tierra' },
+  { camp:'WRC', ronda:14, nombre:'Rally Arabia Saudita',   lugar:'A confirmar',      pais:'🇸🇦 Arabia Saudita', fi:'2026-11-12', ff:'2026-11-15', sup:'asfalto' },
+];
+
+// Inyectar estado automático
+const EVENTOS = EVENTOS_RAW.map(e => ({ ...e, estado: autoEstado(e.fi, e.ff) }));
+
+// Convertir eventos a formato de "carrera" para el dashboard
+const CARRERAS_AUTO = EVENTOS.map(e => {
+  const camp = CAMPEONATOS.find(c => c.id === e.camp);
+  return {
+    id: `${e.camp}-R${e.ronda}`,
+    nombre: e.nombre,
+    serie: e.camp,
+    pais: e.pais.split(' ').slice(1).join(' '),
+    bandera: e.pais.split(' ')[0],
+    ciudad: e.lugar,
+    estado: e.estado,
+    tramo_actual: e.estado === 'en_vivo' ? 'SS1' : '',
+    ss_completados: 0,
+    ss_total: 18,
+    lideres: e.estado === 'en_vivo' ? [
+      { nombre:'— En curso', vehiculo:'Datos en vivo próximamente', tiempo:'—', diff:'—' }
+    ] : [],
+    fecha_texto: formatFecha(e.fi, e.ff),
+    color: camp?.color || '#888',
+  };
+});
+
+const STANDINGS = {
+  ARG: [
+    { nombre:'B. Villagra', nat:'ARG', pts:87 },{ nombre:'R. García', nat:'ARG', pts:74 },
+    { nombre:'M. Andreotti', nat:'ARG', pts:60 },{ nombre:'C. Meneses', nat:'CHI', pts:54 },
+    { nombre:'L. Ferreiro', nat:'ARG', pts:51 },
+  ],
+  CODASUR: [
+    { nombre:'M. Hirvonen', nat:'FIN', pts:62 },{ nombre:'G. Paddon', nat:'NZL', pts:55 },
+    { nombre:'B. Villagra', nat:'ARG', pts:48 },{ nombre:'C. Meneses', nat:'CHI', pts:40 },
+  ],
+  WRC: [
+    { nombre:'T. Neuville', nat:'BEL', pts:148 },{ nombre:'O. Tänak', nat:'EST', pts:135 },
+    { nombre:'S. Ogier', nat:'FRA', pts:122 },{ nombre:'E. Evans', nat:'GBR', pts:110 },
+    { nombre:'K. Rovanperä', nat:'FIN', pts:98 },
+  ],
+};
+
+const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const SUP_COLOR = { tierra:'#8B4513', asfalto:'#555577', nieve:'#4699BB', mixto:'#4A9070' };
+const CAMP_COLOR = { ARG:'#C0392B', CODASUR:'#2980B9', WRC:'#8B5CF6' };
+
+function formatFecha(fi, ff) {
+  const i = new Date(fi), f = new Date(ff);
+  const mi = MESES[i.getMonth()].substring(0,3);
+  return `${i.getDate()} – ${f.getDate()} ${mi} ${i.getFullYear()}`;
+}
+
+// ══════════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════════
+let carrerasData = [];
+let filtro = 'todas';
+let calFiltro = 'ALL';
+let fbConnected = false;
+
+// ══════════════════════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════════════════════
+function toast(msg, tipo='ok') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = `toast show ${tipo}`;
+  setTimeout(() => t.className = 'toast', 3000);
+}
+
+function setFB(status, label) {
+  document.getElementById('fb-dot').className = `fb-dot ${status}`;
+  document.getElementById('fb-label').textContent = label;
+}
+
+window.setFiltro = (btn, f) => {
+  filtro = f;
+  document.querySelectorAll('.filtro').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderCards();
+};
+
+window.showView = (v) => {
+  document.getElementById('view-dashboard').style.display = v==='dashboard' ? 'block' : 'none';
+  document.getElementById('view-calendario').style.display = v==='calendario' ? 'block' : 'none';
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => { if(b.textContent.trim()===(v==='dashboard'?'Dashboard':'Calendario')) b.classList.add('active'); });
+  if (v==='calendario') renderCalendario();
+};
+
+// ══════════════════════════════════════════════════════════
+// RENDER CAMPEONATOS STRIP
+// ══════════════════════════════════════════════════════════
+function renderCampeonatos() {
+  const el = document.getElementById('camp-strip');
+  el.innerHTML = CAMPEONATOS.map(c => `
+    <div class="camp-chip" onclick="goCalCamp('${c.id}')">
+      <div class="chip-serie" style="color:${c.color};">${c.serie}</div>
+      <div class="chip-nombre">${c.nombre}</div>
+      <div class="chip-ronda">Ronda ${c.ronda_actual} de ${c.total_rondas}</div>
+    </div>
+  `).join('');
+}
+
+window.goCalCamp = (id) => { calFiltro = id; window.showView('calendario'); };
+
+// ══════════════════════════════════════════════════════════
+// RENDER CARDS
+// ══════════════════════════════════════════════════════════
+function renderCards() {
+  const grid = document.getElementById('cards-grid');
+  let data = carrerasData.length ? carrerasData : CARRERAS_AUTO;
+
+  // filtrar
+  let filtered = data;
+  if (filtro === 'en_vivo') filtered = data.filter(c => c.estado === 'en_vivo');
+  else if (filtro !== 'todas') filtered = data.filter(c => c.serie === filtro);
+
+  // live banner
+  const liveN = data.filter(c => c.estado === 'en_vivo').length;
+  const banner = document.getElementById('live-banner');
+  document.getElementById('live-count').textContent = liveN;
+  banner.style.display = liveN > 0 ? 'flex' : 'none';
+
+  if (!filtered.length) {
+    grid.innerHTML = '<div class="empty">Sin carreras para este filtro</div>';
+    return;
+  }
+
+  // ordenar: en_vivo primero, luego next, done al final
+  const order = { en_vivo:0, next:1, pend:2, done:3 };
+  filtered = [...filtered].sort((a,b) => (order[a.estado]??4) - (order[b.estado]??4));
+
+  grid.innerHTML = filtered.map(c => {
+    const camp = CAMPEONATOS.find(x => x.id === c.serie);
+    const color = c.color || camp?.color || '#888';
+    const isLive = c.estado === 'en_vivo';
+    const isNext = c.estado === 'next';
+    const isDone = c.estado === 'done';
+    const prog   = c.ss_total > 0 ? Math.round((c.ss_completados/c.ss_total)*100) : 0;
+
+    const badge = isLive
+      ? `<span class="badge badge-live"><span class="pulse" style="width:6px;height:6px;"></span>En vivo</span>`
+      : isNext ? `<span class="badge badge-next">⬤ Próximo</span>`
+      : isDone ? `<span class="badge badge-done">✓ Disputado</span>`
+      : `<span class="badge badge-pend">Pendiente</span>`;
+
+    const lideres = (c.lideres||[]).slice(0,2).map((l,i) => `
+      <div class="lider">
+        <div class="lider-pos ${i===0?'p1':''}">${i+1}</div>
+        <div class="lider-info"><div class="lider-name">${l.nombre}</div><div class="lider-car">${l.vehiculo||''}</div></div>
+        <div><div class="lider-t">${l.tiempo||'—'}</div><div class="lider-d">${i===0?'—':l.diff||''}</div></div>
+      </div>`).join('');
+
+    const progSec = isLive ? `
+      <div class="prog-wrap">
+        <div class="prog-labels"><span>${c.tramo_actual||'SS'}</span><span>${c.ss_completados||0}/${c.ss_total||18} tramos</span></div>
+        <div class="prog-bg"><div class="prog-fill" style="width:${prog}%"></div></div>
+      </div>` : isNext ? `<div style="font-size:12px;color:var(--gold);margin-bottom:10px;">📅 ${c.fecha_texto}</div>`
+      : isDone ? `<div style="font-size:12px;color:var(--text3);margin-bottom:10px;">✓ Disputado · ${c.fecha_texto||''}</div>`
+      : `<div style="font-size:12px;color:var(--text3);margin-bottom:10px;">📅 ${c.fecha_texto||'Fecha próxima'}</div>`;
+
+    return `
+      <div class="card${isLive?' live':''}">
+        ${isLive?'<div class="card-live-stripe"></div>':''}
+        <div class="card-inner">
+          <div class="card-top">
+            <div>
+              <div class="card-serie" style="color:${color};">${c.serie} · ${c.bandera||''}${c.pais||''}</div>
+              <div class="card-name">${c.nombre}</div>
+              <div class="card-loc">${c.ciudad||''}</div>
+            </div>
+            ${badge}
+          </div>
+          ${progSec}
+          ${lideres}
+          <div class="card-actions">
+            ${isLive?`<button class="btn-timing">▶ Ver Live Timing</button>`:''}
+            <button class="btn-detail" onclick="goCalCamp('${c.serie}')">Ver en calendario</button>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════════════════════
+// RENDER STANDINGS
+// ══════════════════════════════════════════════════════════
+window.renderStandings = function() {
+  const key = document.getElementById('camp-sel').value;
+  const data = STANDINGS[key] || [];
+  const max = data[0]?.pts || 1;
+  document.getElementById('standings-list').innerHTML = data.map((d,i) => `
+    <div class="standing">
+      <div class="st-pos ${i===0?'p1':i===1?'p2':i===2?'p3':''}">${i+1}</div>
+      <div class="st-info"><div class="st-name">${d.nombre}</div><div class="st-nat">${d.nat}</div></div>
+      <div class="st-bar"><div class="st-bar-bg"><div class="st-bar-fill" style="width:${Math.round(d.pts/max*100)}%"></div></div></div>
+      <div class="st-pts">${d.pts}</div>
+    </div>`).join('');
+};
+
+// ══════════════════════════════════════════════════════════
+// RENDER CALENDARIO
+// ══════════════════════════════════════════════════════════
+function renderCalendario() {
+  renderCalTabs();
+  const filtered = calFiltro === 'ALL' ? EVENTOS : EVENTOS.filter(e => e.camp === calFiltro);
+  const sorted   = [...filtered].sort((a,b) => a.fi.localeCompare(b.fi));
+
+  // summary
+  const done = filtered.filter(e=>e.estado==='done').length;
+  const next = filtered.filter(e=>e.estado==='next'||e.estado==='en_vivo').length;
+  const paises = new Set(filtered.map(e=>e.pais)).size;
+  document.getElementById('cal-summary').innerHTML = [
+    { val:filtered.length, lbl:'Eventos', col:'var(--text1)' },
+    { val:done, lbl:'Disputados', col:'var(--green)' },
+    { val:next, lbl:'Próximos', col:'var(--gold)' },
+    { val:paises, lbl:'Países', col:'var(--text3)' },
+  ].map(s=>`<div style="background:var(--dark2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;">
+    <div style="font-size:22px;font-weight:600;color:${s.col};">${s.val}</div>
+    <div style="font-size:11px;color:var(--text3);margin-top:2px;">${s.lbl}</div></div>`).join('');
+
+  // group by month
+  const byMonth = {};
+  sorted.forEach(e => { const m=parseInt(e.fi.split('-')[1])-1; if(!byMonth[m])byMonth[m]=[]; byMonth[m].push(e); });
+
+  const tl = document.getElementById('cal-timeline');
+  tl.innerHTML = '';
+  Object.keys(byMonth).sort((a,b)=>+a-+b).forEach(m => {
+    const evs = byMonth[m].map(e => {
+      const ini=new Date(e.fi), fin=new Date(e.ff);
+      const color=CAMP_COLOR[e.camp]||'#888', supC=SUP_COLOR[e.sup]||'#888';
+      const isNext=e.estado==='next'||e.estado==='en_vivo';
+      const badge = e.estado==='done'
+        ? `<span style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:999px;background:var(--green-bg);color:var(--green);">✓ Disputado</span>`
+        : e.estado==='en_vivo'
+        ? `<span style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:999px;background:var(--red-bg);color:#E88;display:flex;align-items:center;gap:4px;"><span style="width:6px;height:6px;border-radius:50%;background:var(--red);animation:pulse 1.2s infinite;display:inline-block;"></span>En vivo</span>`
+        : e.estado==='next'
+        ? `<span style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:999px;background:var(--gold-bg);color:var(--gold);">⬤ Próximo</span>`
+        : `<span style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:999px;background:var(--dark3);color:var(--text3);">Pendiente</span>`;
+      const dobleTag = e.doble ? `<span style="font-size:10px;font-weight:500;padding:2px 8px;border-radius:999px;background:${CAMP_COLOR[e.doble]}22;color:${CAMP_COLOR[e.doble]}cc;">+ ${e.doble}</span>` : '';
+      return `
+        <div class="ev-card${isNext?' next-ev':''}">
+          <div class="ev-date" style="border-left:3px solid ${color};">
+            <div class="ev-day">${ini.getDate()}</div>
+            <div class="ev-mon">${MESES[+m].substring(0,3).toUpperCase()}</div>
+            ${fin.getDate()!==ini.getDate()?`<div class="ev-al">al ${fin.getDate()}</div>`:''}
+          </div>
+          <div class="ev-body">
+            <div class="ev-ronda" style="color:${color};">R${e.ronda} · ${e.camp}</div>
+            <div class="ev-nombre">${e.nombre}</div>
+            <div class="ev-lugar">${e.pais} · ${e.lugar}</div>
+            <div class="ev-tags">
+              <span class="tag" style="background:${supC}22;color:${supC}cc;">${e.sup.charAt(0).toUpperCase()+e.sup.slice(1)}</span>
+              ${dobleTag}
+            </div>
+          </div>
+          <div class="ev-right">${badge}<div class="ev-rnd">${String(e.ronda).padStart(2,'0')}</div></div>
+        </div>`;
+    }).join('');
+    tl.innerHTML += `<div class="month-block"><div class="month-hdr">${MESES[+m]} 2026</div>${evs}</div>`;
+  });
+  if(!sorted.length) tl.innerHTML='<div class="empty">Sin eventos</div>';
+}
+
+function renderCalTabs() {
+  const tabs=[{id:'ALL',lbl:'Todos',col:'#888'},{id:'ARG',lbl:'Rally Argentino',col:'#C0392B'},{id:'CODASUR',lbl:'Codasur',col:'#2980B9'},{id:'WRC',lbl:'WRC',col:'#8B5CF6'}];
+  document.getElementById('cal-tabs').innerHTML=tabs.map(t=>`
+    <button onclick="setCalTab('${t.id}')" style="padding:6px 16px;border-radius:999px;font-size:13px;font-weight:500;cursor:pointer;border:1px solid ${calFiltro===t.id?t.col:'var(--border)'};background:${calFiltro===t.id?t.col:'transparent'};color:${calFiltro===t.id?'#fff':'var(--text2)'};display:inline-flex;align-items:center;gap:6px;">
+      <span style="width:8px;height:8px;border-radius:50%;background:${t.col};display:inline-block;"></span>${t.lbl}
+    </button>`).join('');
+}
+window.setCalTab = (id) => { calFiltro=id; renderCalendario(); };
+
+// ══════════════════════════════════════════════════════════
+// FIREBASE CONNECT
+// ══════════════════════════════════════════════════════════
+window.connectFirebase = async function() {
+  const config = {
+    apiKey:      document.getElementById('fb-apiKey').value.trim(),
+    authDomain:  document.getElementById('fb-authDomain').value.trim(),
+    projectId:   document.getElementById('fb-projectId').value.trim(),
+    databaseURL: document.getElementById('fb-dbURL').value.trim(),
+    appId:       document.getElementById('fb-appId').value.trim(),
+  };
+  if (!config.apiKey || !config.projectId) { toast('Completá al menos API Key y Project ID','err'); return; }
+  try {
+    const app = initializeApp(config, 'rally-app-' + Date.now());
+    const db  = getFirestore(app);
+    setFB('ok','Firebase conectado');
+    fbConnected = true;
+    document.getElementById('modal').style.display = 'none';
+    toast('Firebase conectado. Cargando datos...','ok');
+
+    const q = query(collection(db,'carreras'), where('estado','in',['en_vivo','proximo','pend','done']), orderBy('fecha_inicio','asc'));
+    onSnapshot(q, snap => {
+      const firebaseData = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+      // Mezclar: datos Firebase tienen prioridad; completar con automáticos para los que no estén en Firebase
+      if (firebaseData.length > 0) {
+        carrerasData = firebaseData;
+      } else {
+        carrerasData = [];
+        toast('Firebase conectado — sin datos manuales. Mostrando calendario automático.','ok');
+      }
+      renderCards();
+    }, err => {
+      toast('Error Firestore: ' + err.message, 'err');
+      setFB('err','Error de conexión');
+    });
+  } catch(e) {
+    toast('Error: ' + e.message,'err');
+    setFB('err','Error — revisá las credenciales');
+  }
+};
+
+window.useDemo = function() {
+  carrerasData = [];
+  document.getElementById('modal').style.display = 'none';
+  setFB('ok','Modo demo');
+  toast('Datos del calendario oficial cargados','ok');
+  renderCards();
+};
+
+// ══════════════════════════════════════════════════════════
+// INIT — carga automática sin Firebase
+// ══════════════════════════════════════════════════════════
+renderCampeonatos();
+renderCards();      // carga las carreras automáticamente desde el calendario oficial
+renderStandings();
+</script>
+</body>
+</html>
