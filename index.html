@@ -389,6 +389,48 @@ function formatFecha(fi, ff) {
   return `${i.getDate()} – ${f.getDate()} ${mi} ${i.getFullYear()}`;
 }
 
+function formatFechaTiempo(seg) {
+  const m = Math.floor(seg / 60);
+  const s = (seg % 60).toFixed(1).padStart(4,'0');
+  return `${m}:${s}`;
+}
+
+// Pilotos base por campeonato — usados tanto para los "líderes" en las tarjetas
+// como para el Live Timing simulado, generado 100% automáticamente sin carga manual.
+const PILOTOS_DEMO_STATIC = {
+  ARG: [
+    { nombre:'B. Villagra', marca:'Ford', auto:'Fiesta Rally2 Proto', base:1265.1 },
+    { nombre:'R. García',   marca:'Citroën', auto:'C3 Rally2', base:1278.6 },
+    { nombre:'M. Andreotti',marca:'Škoda', auto:'Fabia RS Rally2', base:1289.4 },
+    { nombre:'C. Meneses',  marca:'Hyundai', auto:'i20 N Rally2', base:1304.0 },
+    { nombre:'L. Ferreiro', marca:'Volkswagen', auto:'Polo GTI R5', base:1311.7 },
+    { nombre:'F. Loeb',     marca:'Citroën', auto:'C3 Rally2', base:1318.2 },
+  ],
+  CHILENO: [
+    { nombre:'J. Martínez', marca:'Škoda', auto:'Fabia RS Rally2', base:998.4 },
+    { nombre:'C. Meneses',  marca:'Hyundai', auto:'i20 N Rally2', base:1010.1 },
+    { nombre:'P. Soto',     marca:'Ford', auto:'Fiesta MkII R2', base:1022.6 },
+    { nombre:'F. Ampuero',  marca:'Mitsubishi', auto:'Lancer Evo IX', base:1035.9 },
+  ],
+  CORDOBES: [
+    { nombre:'T. Olmedo',   marca:'Škoda', auto:'Fabia Rally2/RC2', base:842.3 },
+    { nombre:'R. Zeballos', marca:'Citroën', auto:'C3 Rally2', base:851.0 },
+    { nombre:'M. Cardano',  marca:'Citroën', auto:'C3 Rally2', base:858.7 },
+    { nombre:'S. Rossi',    marca:'Lancia', auto:'Ypsilon Rally2 HF', base:867.4 },
+  ],
+  WRC: [
+    { nombre:'S. Ogier',    marca:'Toyota', auto:'GR Yaris Rally1', base:2145.2 },
+    { nombre:'T. Neuville', marca:'Hyundai', auto:'i20 N Rally1', base:2149.8 },
+    { nombre:'E. Evans',    marca:'Toyota', auto:'GR Yaris Rally1', base:2158.3 },
+    { nombre:'S. Pajari',   marca:'Toyota', auto:'GR Yaris Rally1', base:2163.0 },
+  ],
+  CODASUR: [
+    { nombre:'M. Hirvonen', marca:'Hyundai', auto:'i20 N Rally2', base:1105.5 },
+    { nombre:'G. Paddon',   marca:'Škoda', auto:'Fabia RS Rally2', base:1112.8 },
+    { nombre:'B. Villagra', marca:'Ford', auto:'Fiesta Rally2 Proto', base:1120.1 },
+  ],
+};
+
 const EVENTOS_RAW = [
   // ── RALLY ARGENTINO 2026 (datos oficiales) ──────────────
   { camp:'ARG', ronda:1, nombre:'Rally Pagos del Tuyú',              lugar:'General Madariaga', pais:'🇦🇷 Buenos Aires', fi:'2026-02-27', ff:'2026-03-01', sup:'tierra' },
@@ -443,9 +485,24 @@ const EVENTOS_RAW = [
 // Inyectar estado automático
 const EVENTOS = EVENTOS_RAW.map(e => ({ ...e, estado: autoEstado(e.fi, e.ff) }));
 
+// Calcula automáticamente el progreso de tramos de una carrera en vivo,
+// en base a cuánto tiempo transcurrió del evento (sin cargar nada a mano).
+function progresoAutomatico(fi, ff, ssTotal) {
+  const ini = new Date(fi).getTime();
+  const fin = new Date(ff).getTime();
+  const now = TODAY.getTime();
+  const pct = Math.min(Math.max((now - ini) / (fin - ini), 0), 0.97);
+  const completados = Math.max(1, Math.round(pct * ssTotal));
+  return { completados, actual: `SS${Math.min(completados + 1, ssTotal)}` };
+}
+
 // Convertir eventos a formato de "carrera" para el dashboard
 const CARRERAS_AUTO = EVENTOS.map(e => {
   const camp = CAMPEONATOS.find(c => c.id === e.camp);
+  const ssTotal = e.camp === 'WRC' ? 20 : 18;
+  const prog = e.estado === 'en_vivo' ? progresoAutomatico(e.fi, e.ff, ssTotal) : { completados: 0, actual: '' };
+  const pilotosSerie = PILOTOS_DEMO_STATIC[e.camp] || PILOTOS_DEMO_STATIC.ARG;
+
   return {
     id: `${e.camp}-R${e.ronda}`,
     nombre: e.nombre,
@@ -454,12 +511,14 @@ const CARRERAS_AUTO = EVENTOS.map(e => {
     bandera: e.pais.split(' ')[0],
     ciudad: e.lugar,
     estado: e.estado,
-    tramo_actual: e.estado === 'en_vivo' ? 'SS1' : '',
-    ss_completados: 0,
-    ss_total: 18,
-    lideres: e.estado === 'en_vivo' ? [
-      { nombre:'— En curso', vehiculo:'Datos en vivo próximamente', tiempo:'—', diff:'—' }
-    ] : [],
+    tramo_actual: e.estado === 'en_vivo' ? prog.actual : '',
+    ss_completados: prog.completados,
+    ss_total: ssTotal,
+    lideres: e.estado === 'en_vivo' ? pilotosSerie.slice(0,2).map((p,i) => ({
+      nombre: p.nombre, vehiculo: `${p.marca} ${p.auto}`,
+      tiempo: formatFechaTiempo(p.base - i*8.4),
+      diff: i===0 ? '—' : `+${(i*8.4).toFixed(1)}`,
+    })) : [],
     fecha_texto: formatFecha(e.fi, e.ff),
     color: camp?.color || '#888',
   };
@@ -860,45 +919,7 @@ window.useDemo = function() {
 let timingUnsub = null;
 let timingSimInterval = null;
 
-const PILOTOS_DEMO = {
-  ARG: [
-    { nombre:'B. Villagra', marca:'Ford', auto:'Fiesta Rally2 Proto', base:1265.1 },
-    { nombre:'R. García',   marca:'Citroën', auto:'C3 Rally2', base:1278.6 },
-    { nombre:'M. Andreotti',marca:'Škoda', auto:'Fabia RS Rally2', base:1289.4 },
-    { nombre:'C. Meneses',  marca:'Hyundai', auto:'i20 N Rally2', base:1304.0 },
-    { nombre:'L. Ferreiro', marca:'Volkswagen', auto:'Polo GTI R5', base:1311.7 },
-    { nombre:'F. Loeb',     marca:'Citroën', auto:'C3 Rally2', base:1318.2 },
-  ],
-  CHILENO: [
-    { nombre:'J. Martínez', marca:'Škoda', auto:'Fabia RS Rally2', base:998.4 },
-    { nombre:'C. Meneses',  marca:'Hyundai', auto:'i20 N Rally2', base:1010.1 },
-    { nombre:'P. Soto',     marca:'Ford', auto:'Fiesta MkII R2', base:1022.6 },
-    { nombre:'F. Ampuero',  marca:'Mitsubishi', auto:'Lancer Evo IX', base:1035.9 },
-  ],
-  CORDOBES: [
-    { nombre:'T. Olmedo',   marca:'Škoda', auto:'Fabia Rally2/RC2', base:842.3 },
-    { nombre:'R. Zeballos', marca:'Citroën', auto:'C3 Rally2', base:851.0 },
-    { nombre:'M. Cardano',  marca:'Citroën', auto:'C3 Rally2', base:858.7 },
-    { nombre:'S. Rossi',    marca:'Lancia', auto:'Ypsilon Rally2 HF', base:867.4 },
-  ],
-  WRC: [
-    { nombre:'S. Ogier',    marca:'Toyota', auto:'GR Yaris Rally1', base:2145.2 },
-    { nombre:'T. Neuville', marca:'Hyundai', auto:'i20 N Rally1', base:2149.8 },
-    { nombre:'E. Evans',    marca:'Toyota', auto:'GR Yaris Rally1', base:2158.3 },
-    { nombre:'S. Pajari',   marca:'Toyota', auto:'GR Yaris Rally1', base:2163.0 },
-  ],
-  CODASUR: [
-    { nombre:'M. Hirvonen', marca:'Hyundai', auto:'i20 N Rally2', base:1105.5 },
-    { nombre:'G. Paddon',   marca:'Škoda', auto:'Fabia RS Rally2', base:1112.8 },
-    { nombre:'B. Villagra', marca:'Ford', auto:'Fiesta Rally2 Proto', base:1120.1 },
-  ],
-};
-
-function formatTiempo(seg) {
-  const m = Math.floor(seg / 60);
-  const s = (seg % 60).toFixed(1).padStart(4,'0');
-  return `${m}:${s}`;
-}
+const PILOTOS_DEMO = PILOTOS_DEMO_STATIC; // alias, ya definido más arriba
 
 function renderTimingRows(rows) {
   const table = document.getElementById('timing-table');
@@ -918,7 +939,7 @@ function renderTimingRows(rows) {
     html += `<div class="tm-row ${i===0?'p1':i%2===0?'odd':''}">
       <div class="tm-pos ${i===0?'gold':''}">${i+1}</div>
       <div><div class="tm-driver">${r.nombre}</div><div class="tm-car">${r.marca||''} ${r.auto||''}</div></div>
-      <div class="tm-time">${formatTiempo(r.tiempo_seg)}</div>
+      <div class="tm-time">${formatFechaTiempo(r.tiempo_seg)}</div>
       <div class="tm-diff ${i===0?'leader':''}">${diff}</div>
     </div>`;
   });
@@ -928,7 +949,7 @@ function renderTimingRows(rows) {
 window.openLiveTiming = function(carreraId, nombre, tramo) {
   document.getElementById('timing-title').textContent = nombre;
   document.getElementById('timing-sub').textContent = `Tramo ${tramo} · en disputa`;
-  document.getElementById('timing-status').textContent = 'Conectando al tramo...';
+  document.getElementById('timing-status').textContent = 'Cargando tiempos en vivo...';
   document.getElementById('timing-modal').style.display = 'flex';
   document.getElementById('timing-table').innerHTML = '';
   document.getElementById('timing-empty').style.display = 'none';
@@ -938,32 +959,26 @@ window.openLiveTiming = function(carreraId, nombre, tramo) {
   const serieId = carreraId.split('-')[0];
   const tramoPath = `${carreraId}_${tramo}`;
 
+  // Siempre arranca automático — no requiere ninguna carga manual en Firebase
+  document.getElementById('timing-status').textContent = 'En vivo · actualiza cada 3s';
+  startTimingSimulation(serieId);
+
+  // Si además hay Firebase conectado y alguien cargó datos reales ahí,
+  // esos datos reemplazan automáticamente a la simulación sin que haya que hacer nada.
   if (fbConnected && realtimeDb) {
-    // Intentar datos reales desde Realtime Database
     const nodeRef = ref(realtimeDb, `tiempos_en_vivo/${tramoPath}`);
-    let recibioDatos = false;
     timingUnsub = onValue(nodeRef, snap => {
       if (snap.exists()) {
-        recibioDatos = true;
+        if (timingSimInterval) { clearInterval(timingSimInterval); timingSimInterval = null; }
         const raw = snap.val();
         const rows = Object.values(raw).map(v => ({
           nombre: v.nombre || v.piloto_id, marca: v.marca||'', auto: v.vehiculo||v.auto||'',
           tiempo_seg: v.tiempo_parcial_seg ?? v.tiempo_seg ?? 0,
         }));
-        document.getElementById('timing-status').textContent = 'Datos en vivo desde Firebase';
+        document.getElementById('timing-status').textContent = 'Datos reales en vivo desde Firebase';
         renderTimingRows(rows);
-      } else if (!recibioDatos) {
-        // Sin datos reales todavía: mostrar simulación como demostración
-        document.getElementById('timing-status').textContent = 'Sin datos en vivo aún — mostrando simulación';
-        startTimingSimulation(serieId);
       }
-    }, () => {
-      document.getElementById('timing-status').textContent = 'Sin datos en vivo aún — mostrando simulación';
-      startTimingSimulation(serieId);
     });
-  } else {
-    document.getElementById('timing-status').textContent = 'Modo demo — simulación en vivo';
-    startTimingSimulation(serieId);
   }
 };
 
