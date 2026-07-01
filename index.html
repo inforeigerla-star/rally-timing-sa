@@ -656,7 +656,7 @@ window.connectFirebase = async function() {
     document.getElementById('modal').style.display = 'none';
     toast('Firebase conectado. Cargando datos...','ok');
 
-    const q = query(collection(db,'carreras'), where('estado','in',['en_vivo','proximo','pend','done']), orderBy('fecha_inicio','asc'));
+    const q = collection(db,'carreras');
     onSnapshot(q, snap => {
       const firebaseData = snap.docs.map(d => ({ id:d.id, ...d.data() }));
       // Mezclar: datos Firebase tienen prioridad; completar con automáticos para los que no estén en Firebase
