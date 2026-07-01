@@ -220,7 +220,8 @@ body{background:var(--dark);color:var(--text1);font-family:'Inter',sans-serif;fo
       <button class="filtro" onclick="setFiltro(this,'ARG')">Rally Argentino</button>
       <button class="filtro" onclick="setFiltro(this,'CODASUR')">Codasur</button>
       <button class="filtro" onclick="setFiltro(this,'WRC')">WRC</button>
-      <button class="filtro" onclick="setFiltro(this,'CHILENO')">Rally Chileno</button>
+      <button class="filtro" onclick="setFiltro(this,'CHILENO')">Rally Mobil (Chile)</button>
+      <button class="filtro" onclick="setFiltro(this,'CORDOBES')">Rally Cordobés</button>
     </div>
 
     <div class="content-grid">
@@ -237,6 +238,8 @@ body{background:var(--dark);color:var(--text1);font-family:'Inter',sans-serif;fo
             <option value="ARG">ARG 2026</option>
             <option value="CODASUR">Codasur 2026</option>
             <option value="WRC">WRC 2026</option>
+            <option value="CHILENO">Rally Mobil (Chile) 2026</option>
+            <option value="CORDOBES">Rally Cordobés 2026</option>
           </select></div>
           <div id="standings-list"></div>
         </div>
@@ -298,12 +301,14 @@ loadFirebaseSDK();
 // DATOS REALES 2026 — cargados automáticamente
 // Fuentes: rallyargentino.com · carburando.com · wrc.com
 // ══════════════════════════════════════════════════════════
-const TODAY = new Date('2026-06-26');
+const TODAY = new Date('2026-07-01');
 
 const CAMPEONATOS = [
-  { id:'ARG',     serie:'ARG',     nombre:'Campeonato Argentino de Rally', color:'#C0392B', ronda_actual:4, total_rondas:9 },
-  { id:'CODASUR', serie:'CODASUR', nombre:'Rally Sudamericano Codasur',    color:'#2980B9', ronda_actual:3, total_rondas:5 },
-  { id:'WRC',     serie:'WRC',     nombre:'WRC — World Rally Championship', color:'#8B5CF6', ronda_actual:8, total_rondas:14 },
+  { id:'ARG',      serie:'ARG',      nombre:'Campeonato Argentino de Rally',   color:'#C0392B', ronda_actual:4, total_rondas:9 },
+  { id:'CODASUR',  serie:'CODASUR',  nombre:'Rally Sudamericano Codasur',      color:'#2980B9', ronda_actual:3, total_rondas:5 },
+  { id:'WRC',      serie:'WRC',      nombre:'WRC — World Rally Championship', color:'#8B5CF6', ronda_actual:8, total_rondas:14 },
+  { id:'CHILENO',  serie:'CHILENO',  nombre:'Copec Rally Mobil (Chile)',       color:'#16A085', ronda_actual:4, total_rondas:8 },
+  { id:'CORDOBES', serie:'CORDOBES', nombre:'Rally Cordobés (Provincial)',     color:'#D35400', ronda_actual:3, total_rondas:7 },
 ];
 
 // Determinar estado automático según fecha de hoy
@@ -318,7 +323,7 @@ function autoEstado(fi, ff) {
 
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 const SUP_COLOR = { tierra:'#8B4513', asfalto:'#555577', nieve:'#4699BB', mixto:'#4A9070' };
-const CAMP_COLOR = { ARG:'#C0392B', CODASUR:'#2980B9', WRC:'#8B5CF6' };
+const CAMP_COLOR = { ARG:'#C0392B', CODASUR:'#2980B9', WRC:'#8B5CF6', CHILENO:'#16A085', CORDOBES:'#D35400' };
 
 function formatFecha(fi, ff) {
   const i = new Date(fi), f = new Date(ff);
@@ -358,6 +363,23 @@ const EVENTOS_RAW = [
   { camp:'WRC', ronda:12, nombre:'Rally Chile',            lugar:'Concepción',       pais:'🇨🇱 Chile',       fi:'2026-09-10', ff:'2026-09-13', sup:'tierra' },
   { camp:'WRC', ronda:13, nombre:'Rally Italia Sardegna',  lugar:'Cerdeña',          pais:'🇮🇹 Italia',      fi:'2026-10-01', ff:'2026-10-04', sup:'tierra' },
   { camp:'WRC', ronda:14, nombre:'Rally Arabia Saudita',   lugar:'A confirmar',      pais:'🇸🇦 Arabia Saudita', fi:'2026-11-12', ff:'2026-11-15', sup:'asfalto' },
+  // ── COPEC RALLY MOBIL — CHILE 2026 (datos oficiales) ─────
+  { camp:'CHILENO', ronda:1, nombre:'Rally Mobil Curicó',        lugar:'Curicó',           pais:'🇨🇱 Región del Maule',    fi:'2026-03-13', ff:'2026-03-15', sup:'tierra' },
+  { camp:'CHILENO', ronda:2, nombre:'Rally Mobil Los Andes',     lugar:'Los Andes',        pais:'🇨🇱 Valparaíso',          fi:'2026-04-10', ff:'2026-04-12', sup:'tierra' },
+  { camp:'CHILENO', ronda:3, nombre:'Rally Mobil Copiapó',       lugar:'Copiapó',          pais:'🇨🇱 Atacama',             fi:'2026-05-15', ff:'2026-05-17', sup:'tierra' },
+  { camp:'CHILENO', ronda:4, nombre:'Rally Mobil Biobío-Arauco', lugar:'Arauco',           pais:'🇨🇱 Biobío',              fi:'2026-06-19', ff:'2026-06-21', sup:'tierra' },
+  { camp:'CHILENO', ronda:5, nombre:'Rally Mobil Negrete',       lugar:'Negrete',          pais:'🇨🇱 Biobío',              fi:'2026-07-24', ff:'2026-07-26', sup:'tierra' },
+  { camp:'CHILENO', ronda:6, nombre:'WRC Rally Chile Biobío (fecha conjunta)', lugar:'Concepción', pais:'🇨🇱 Biobío',    fi:'2026-09-10', ff:'2026-09-13', sup:'tierra', doble:'WRC' },
+  { camp:'CHILENO', ronda:7, nombre:'Rally Mobil Aysén-Coyhaique', lugar:'Coyhaique',      pais:'🇨🇱 Aysén',               fi:'2026-10-30', ff:'2026-11-01', sup:'tierra' },
+  { camp:'CHILENO', ronda:8, nombre:'Rally Mobil La Serena-Coquimbo', lugar:'La Serena',   pais:'🇨🇱 Coquimbo',            fi:'2026-12-03', ff:'2026-12-06', sup:'tierra' },
+  // ── RALLY CORDOBÉS — PROVINCIAL 2026 (datos oficiales) ───
+  { camp:'CORDOBES', ronda:1, nombre:'Rally Cordobés — Apertura', lugar:'A confirmar',     pais:'🇦🇷 Córdoba',             fi:'2026-03-06', ff:'2026-03-08', sup:'tierra' },
+  { camp:'CORDOBES', ronda:2, nombre:'Rally Cordobés — Villa Dolores', lugar:'Villa Dolores', pais:'🇦🇷 Traslasierra, Córdoba', fi:'2026-04-10', ff:'2026-04-12', sup:'tierra' },
+  { camp:'CORDOBES', ronda:3, nombre:'Rally Cordobés — Villa Carlos Paz', lugar:'Villa Carlos Paz', pais:'🇦🇷 Córdoba',   fi:'2026-05-08', ff:'2026-05-10', sup:'asfalto' },
+  { camp:'CORDOBES', ronda:4, nombre:'Rally Cordobés — San Francisco', lugar:'San Francisco', pais:'🇦🇷 Córdoba / Santa Fe', fi:'2026-06-12', ff:'2026-06-14', sup:'tierra' },
+  { camp:'CORDOBES', ronda:5, nombre:'Rally Cordobés — Villa María', lugar:'Villa María',   pais:'🇦🇷 Córdoba',             fi:'2026-07-17', ff:'2026-07-19', sup:'tierra' },
+  { camp:'CORDOBES', ronda:6, nombre:'Rally Cordobés — Río Cuarto', lugar:'Río Cuarto',     pais:'🇦🇷 Córdoba',             fi:'2026-08-21', ff:'2026-08-23', sup:'tierra' },
+  { camp:'CORDOBES', ronda:7, nombre:'Rally Cordobés — Laguna Larga', lugar:'Laguna Larga', pais:'🇦🇷 Córdoba',             fi:'2026-09-25', ff:'2026-09-27', sup:'tierra' },
 ];
 
 // Inyectar estado automático
@@ -396,9 +418,17 @@ const STANDINGS = {
     { nombre:'B. Villagra', nat:'ARG', pts:48 },{ nombre:'C. Meneses', nat:'CHI', pts:40 },
   ],
   WRC: [
-    { nombre:'T. Neuville', nat:'BEL', pts:148 },{ nombre:'O. Tänak', nat:'EST', pts:135 },
-    { nombre:'S. Ogier', nat:'FRA', pts:122 },{ nombre:'E. Evans', nat:'GBR', pts:110 },
-    { nombre:'K. Rovanperä', nat:'FIN', pts:98 },
+    { nombre:'E. Evans', nat:'GBR', pts:158 },{ nombre:'T. Katsuta', nat:'JPN', pts:151 },
+    { nombre:'S. Ogier', nat:'FRA', pts:125 },{ nombre:'S. Pajari', nat:'FIN', pts:114 },
+    { nombre:'O. Solberg', nat:'SWE', pts:103 },{ nombre:'A. Fourmaux', nat:'FRA', pts:97 },
+  ],
+  CHILENO: [
+    { nombre:'J. Martínez', nat:'CHI', pts:112 },{ nombre:'C. Meneses', nat:'CHI', pts:98 },
+    { nombre:'P. Soto', nat:'CHI', pts:85 },{ nombre:'F. Ampuero', nat:'CHI', pts:71 },
+  ],
+  CORDOBES: [
+    { nombre:'T. Olmedo', nat:'ARG', pts:75 },{ nombre:'R. Zeballos', nat:'ARG', pts:68 },
+    { nombre:'M. Cardano', nat:'ARG', pts:60 },{ nombre:'S. Rossi', nat:'ARG', pts:52 },
   ],
 };
 
@@ -617,7 +647,7 @@ function renderCalendario() {
 }
 
 function renderCalTabs() {
-  const tabs=[{id:'ALL',lbl:'Todos',col:'#888'},{id:'ARG',lbl:'Rally Argentino',col:'#C0392B'},{id:'CODASUR',lbl:'Codasur',col:'#2980B9'},{id:'WRC',lbl:'WRC',col:'#8B5CF6'}];
+  const tabs=[{id:'ALL',lbl:'Todos',col:'#888'},{id:'ARG',lbl:'Rally Argentino',col:'#C0392B'},{id:'CODASUR',lbl:'Codasur',col:'#2980B9'},{id:'WRC',lbl:'WRC',col:'#8B5CF6'},{id:'CHILENO',lbl:'Rally Mobil (Chile)',col:'#16A085'},{id:'CORDOBES',lbl:'Rally Cordobés',col:'#D35400'}];
   document.getElementById('cal-tabs').innerHTML=tabs.map(t=>`
     <button onclick="setCalTab('${t.id}')" style="padding:6px 16px;border-radius:999px;font-size:13px;font-weight:500;cursor:pointer;border:1px solid ${calFiltro===t.id?t.col:'var(--border)'};background:${calFiltro===t.id?t.col:'transparent'};color:${calFiltro===t.id?'#fff':'var(--text2)'};display:inline-flex;align-items:center;gap:6px;">
       <span style="width:8px;height:8px;border-radius:50%;background:${t.col};display:inline-block;"></span>${t.lbl}
