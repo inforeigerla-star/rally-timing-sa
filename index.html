@@ -129,6 +129,10 @@ body{background:var(--dark);color:var(--text1);font-family:'Inter',sans-serif;fo
 .st-bar-bg{height:4px;background:var(--dark4);border-radius:2px;}
 .st-bar-fill{height:4px;background:var(--red);border-radius:2px;}
 .st-pts{font-size:13px;font-weight:600;font-family:'JetBrains Mono',monospace;min-width:28px;text-align:right;}
+.st-car{font-size:11px;color:var(--text3);margin-top:1px;}
+.cat-tab{padding:4px 11px;border-radius:999px;font-size:11px;font-weight:500;cursor:pointer;border:1px solid var(--border);color:var(--text2);background:none;transition:all .15s;}
+.cat-tab:hover{border-color:var(--border2);color:var(--text1);}
+.cat-tab.active{background:var(--red-bg);border-color:var(--red);color:#E88;}
 
 /* calendario */
 .cal-wrap{display:none;}
@@ -160,6 +164,19 @@ body{background:var(--dark);color:var(--text1);font-family:'Inter',sans-serif;fo
 .toast.show{transform:translateY(0);opacity:1;}
 .toast.ok{border-color:rgba(39,174,96,.4);}
 .toast.err{border-color:rgba(226,75,74,.4);}
+
+/* live timing table */
+.tm-row{display:grid;grid-template-columns:28px 1fr 78px 60px;gap:8px;align-items:center;padding:9px 10px;border-radius:7px;margin-bottom:4px;font-size:13px;}
+.tm-row.hdr{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;padding-bottom:6px;margin-bottom:2px;border-bottom:1px solid var(--border);border-radius:0;}
+.tm-row.p1{background:var(--gold-bg);}
+.tm-row.odd{background:var(--dark3);}
+.tm-pos{font-weight:600;color:var(--text3);}
+.tm-pos.gold{color:var(--gold);}
+.tm-driver{font-weight:500;}
+.tm-car{font-size:11px;color:var(--text3);}
+.tm-time{font-family:'JetBrains Mono',monospace;font-weight:500;text-align:right;}
+.tm-diff{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--red);text-align:right;}
+.tm-diff.leader{color:var(--green);}
 </style>
 </head>
 <body>
@@ -195,6 +212,25 @@ body{background:var(--dark);color:var(--text1);font-family:'Inter',sans-serif;fo
       <button class="btn-primary" id="btn-connect">Conectar</button>
       <button class="btn-ghost" id="btn-close-modal">Cerrar</button>
     </div>
+  </div>
+</div>
+
+<!-- LIVE TIMING MODAL -->
+<div class="modal-overlay" id="timing-modal" style="display:none;">
+  <div class="modal-box" style="max-width:640px;max-height:85vh;overflow-y:auto;">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:4px;">
+      <div>
+        <div class="modal-title" id="timing-title">Live Timing</div>
+        <div class="modal-sub" id="timing-sub" style="margin-bottom:0;">Cargando...</div>
+      </div>
+      <button class="btn-ghost" id="btn-close-timing" style="padding:6px 12px;">✕</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin:14px 0;">
+      <div class="pulse" style="width:7px;height:7px;"></div>
+      <span style="font-size:12px;color:var(--text2);" id="timing-status">Conectando al tramo...</span>
+    </div>
+    <div id="timing-table"></div>
+    <div id="timing-empty" style="display:none;text-align:center;padding:30px 10px;color:var(--text3);font-size:13px;"></div>
   </div>
 </div>
 
@@ -234,13 +270,14 @@ body{background:var(--dark);color:var(--text1);font-family:'Inter',sans-serif;fo
       <div>
         <div class="sec-label">Clasificación</div>
         <div class="sidebar-card">
-          <div class="sidebar-title">General <select id="camp-sel" onchange="renderStandings()">
+          <div class="sidebar-title">Clasificación <select id="camp-sel" onchange="onCampChange()">
             <option value="ARG">ARG 2026</option>
             <option value="CODASUR">Codasur 2026</option>
             <option value="WRC">WRC 2026</option>
             <option value="CHILENO">Rally Mobil (Chile) 2026</option>
             <option value="CORDOBES">Rally Cordobés 2026</option>
           </select></div>
+          <div id="cat-tabs" style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px;"></div>
           <div id="standings-list"></div>
         </div>
       </div>
@@ -292,10 +329,13 @@ const FIREBASE_CONFIG = {
   appId:       "1:161466115349:web:631239f0dfbc16a7a5b51c"
 };
 
+let getDatabase, ref, onValue, off;
+
 async function loadFirebaseSDK() {
   try {
     const appMod = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
     const fsMod  = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+    const rtMod  = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js');
     initializeApp = appMod.initializeApp;
     getFirestore  = fsMod.getFirestore;
     collection    = fsMod.collection;
@@ -303,6 +343,10 @@ async function loadFirebaseSDK() {
     where         = fsMod.where;
     orderBy       = fsMod.orderBy;
     onSnapshot    = fsMod.onSnapshot;
+    getDatabase   = rtMod.getDatabase;
+    ref           = rtMod.ref;
+    onValue       = rtMod.onValue;
+    off           = rtMod.off;
     firebaseReady = true;
   } catch (e) {
     console.error('No se pudo cargar el SDK de Firebase:', e);
@@ -421,29 +465,88 @@ const CARRERAS_AUTO = EVENTOS.map(e => {
   };
 });
 
+// Categorías por campeonato (para el selector de clase)
+const CATEGORIAS = {
+  ARG:      ['General', 'RC2', 'RC3', 'RC4'],
+  CODASUR:  ['General', 'RC2', 'RC3'],
+  WRC:      ['General', 'WRC1', 'WRC2', 'WRC3'],
+  CHILENO:  ['General', 'RC2', 'RC3', 'RC4', 'GT2i'],
+  CORDOBES: ['General', 'RC2', 'RC3', 'Zonal'],
+};
+
+// Clasificación Top 10 por campeonato y categoría, con auto y marca
 const STANDINGS = {
-  ARG: [
-    { nombre:'B. Villagra', nat:'ARG', pts:87 },{ nombre:'R. García', nat:'ARG', pts:74 },
-    { nombre:'M. Andreotti', nat:'ARG', pts:60 },{ nombre:'C. Meneses', nat:'CHI', pts:54 },
-    { nombre:'L. Ferreiro', nat:'ARG', pts:51 },
-  ],
-  CODASUR: [
-    { nombre:'M. Hirvonen', nat:'FIN', pts:62 },{ nombre:'G. Paddon', nat:'NZL', pts:55 },
-    { nombre:'B. Villagra', nat:'ARG', pts:48 },{ nombre:'C. Meneses', nat:'CHI', pts:40 },
-  ],
-  WRC: [
-    { nombre:'E. Evans', nat:'GBR', pts:158 },{ nombre:'T. Katsuta', nat:'JPN', pts:151 },
-    { nombre:'S. Ogier', nat:'FRA', pts:125 },{ nombre:'S. Pajari', nat:'FIN', pts:114 },
-    { nombre:'O. Solberg', nat:'SWE', pts:103 },{ nombre:'A. Fourmaux', nat:'FRA', pts:97 },
-  ],
-  CHILENO: [
-    { nombre:'J. Martínez', nat:'CHI', pts:112 },{ nombre:'C. Meneses', nat:'CHI', pts:98 },
-    { nombre:'P. Soto', nat:'CHI', pts:85 },{ nombre:'F. Ampuero', nat:'CHI', pts:71 },
-  ],
-  CORDOBES: [
-    { nombre:'T. Olmedo', nat:'ARG', pts:75 },{ nombre:'R. Zeballos', nat:'ARG', pts:68 },
-    { nombre:'M. Cardano', nat:'ARG', pts:60 },{ nombre:'S. Rossi', nat:'ARG', pts:52 },
-  ],
+  ARG: {
+    General: [
+      { nombre:'B. Villagra', nat:'ARG', pts:87, marca:'Ford',      auto:'Fiesta Rally2 Proto', cat:'RC2' },
+      { nombre:'R. García',   nat:'ARG', pts:74, marca:'Citroën',   auto:'C3 Rally2',           cat:'RC2' },
+      { nombre:'M. Andreotti',nat:'ARG', pts:60, marca:'Škoda',     auto:'Fabia RS Rally2',     cat:'RC2' },
+      { nombre:'C. Meneses',  nat:'CHI', pts:54, marca:'Hyundai',   auto:'i20 N Rally2',        cat:'RC2' },
+      { nombre:'L. Ferreiro', nat:'ARG', pts:51, marca:'Volkswagen',auto:'Polo GTI R5',         cat:'RC2' },
+      { nombre:'F. Loeb',     nat:'FRA', pts:45, marca:'Citroën',   auto:'C3 Rally2',           cat:'RC2' },
+      { nombre:'P. Soto',     nat:'CHI', pts:38, marca:'Ford',      auto:'Fiesta MkII R2',      cat:'RC3' },
+      { nombre:'M. Díaz',     nat:'ARG', pts:31, marca:'Mitsubishi',auto:'Lancer Evo IX',       cat:'RC3' },
+      { nombre:'A. Ramos',    nat:'BRA', pts:24, marca:'Subaru',    auto:'Impreza N14',         cat:'RC4' },
+      { nombre:'J. Peralta',  nat:'ARG', pts:18, marca:'Ford',      auto:'Fiesta Proto',        cat:'RC4' },
+    ],
+  },
+  CODASUR: {
+    General: [
+      { nombre:'M. Hirvonen', nat:'FIN', pts:62, marca:'Hyundai', auto:'i20 N Rally2',      cat:'RC2' },
+      { nombre:'G. Paddon',   nat:'NZL', pts:55, marca:'Škoda',   auto:'Fabia RS Rally2',    cat:'RC2' },
+      { nombre:'B. Villagra', nat:'ARG', pts:48, marca:'Ford',    auto:'Fiesta Rally2 Proto', cat:'RC2' },
+      { nombre:'C. Meneses',  nat:'CHI', pts:40, marca:'Hyundai', auto:'i20 N Rally2',        cat:'RC2' },
+      { nombre:'R. García',   nat:'ARG', pts:35, marca:'Citroën', auto:'C3 Rally2',           cat:'RC2' },
+      { nombre:'D. Domínguez',nat:'PAR', pts:29, marca:'Škoda',   auto:'Fabia R5',            cat:'RC3' },
+      { nombre:'H. Bassaber', nat:'BOL', pts:22, marca:'Mitsubishi', auto:'Lancer Evo IX',    cat:'RC3' },
+    ],
+  },
+  WRC: {
+    General: [
+      { nombre:'E. Evans',    nat:'GBR', pts:158, marca:'Toyota',  auto:'GR Yaris Rally1', cat:'WRC1' },
+      { nombre:'T. Katsuta',  nat:'JPN', pts:151, marca:'Toyota',  auto:'GR Yaris Rally1', cat:'WRC1' },
+      { nombre:'S. Ogier',    nat:'FRA', pts:125, marca:'Toyota',  auto:'GR Yaris Rally1', cat:'WRC1' },
+      { nombre:'S. Pajari',   nat:'FIN', pts:114, marca:'Toyota',  auto:'GR Yaris Rally1', cat:'WRC1' },
+      { nombre:'O. Solberg',  nat:'SWE', pts:103, marca:'Toyota',  auto:'GR Yaris Rally1', cat:'WRC1' },
+      { nombre:'A. Fourmaux', nat:'FRA', pts:97,  marca:'Hyundai', auto:'i20 N Rally1',    cat:'WRC1' },
+      { nombre:'T. Neuville',  nat:'BEL', pts:91,  marca:'Hyundai', auto:'i20 N Rally1',    cat:'WRC1' },
+      { nombre:'J. McErlean',  nat:'IRL', pts:68,  marca:'Ford',    auto:'Puma Rally1',     cat:'WRC1' },
+      { nombre:'M. Sesks',     nat:'LAT', pts:54,  marca:'Ford',    auto:'Puma Rally1',     cat:'WRC1' },
+      { nombre:'R. Virves',    nat:'EST', pts:112, marca:'Škoda',   auto:'Fabia RS Rally2', cat:'WRC2' },
+    ],
+    WRC2: [
+      { nombre:'R. Virves',   nat:'EST', pts:112, marca:'Škoda',  auto:'Fabia RS Rally2', cat:'WRC2' },
+      { nombre:'T. Suninen',  nat:'FIN', pts:98,  marca:'Škoda',  auto:'Fabia RS Rally2', cat:'WRC2' },
+      { nombre:'A. Mikkelsen',nat:'NOR', pts:81,  marca:'Škoda',  auto:'Fabia RS Rally2', cat:'WRC2' },
+    ],
+    WRC3: [
+      { nombre:'M. Fontana',  nat:'ITA', pts:76, marca:'Citroën', auto:'C3 Rally3', cat:'WRC3' },
+      { nombre:'A. Türkkan',  nat:'TUR', pts:64, marca:'Citroën', auto:'C3 Rally3', cat:'WRC3' },
+    ],
+  },
+  CHILENO: {
+    General: [
+      { nombre:'J. Martínez', nat:'CHI', pts:112, marca:'Škoda',    auto:'Fabia RS Rally2',    cat:'RC2' },
+      { nombre:'C. Meneses',  nat:'CHI', pts:98,  marca:'Hyundai',  auto:'i20 N Rally2',       cat:'RC2' },
+      { nombre:'P. Soto',     nat:'CHI', pts:85,  marca:'Ford',     auto:'Fiesta MkII R2',     cat:'RC2' },
+      { nombre:'F. Ampuero',  nat:'CHI', pts:71,  marca:'Mitsubishi',auto:'Lancer Evo IX',     cat:'RC3' },
+      { nombre:'B. Villagra', nat:'ARG', pts:58,  marca:'Ford',     auto:'Fiesta Rally2 Proto',cat:'RC2' },
+      { nombre:'R. Zurita',   nat:'CHI', pts:47,  marca:'Subaru',   auto:'Impreza N14',        cat:'RC3' },
+      { nombre:'M. Baeza',    nat:'CHI', pts:36,  marca:'Peugeot',  auto:'208 R2',             cat:'RC4' },
+      { nombre:'D. Villagra', nat:'CHI', pts:25,  marca:'Suzuki',   auto:'Swift R1',           cat:'GT2i' },
+    ],
+  },
+  CORDOBES: {
+    General: [
+      { nombre:'T. Olmedo',   nat:'ARG', pts:75, marca:'Škoda',    auto:'Fabia Rally2/RC2', cat:'RC2' },
+      { nombre:'R. Zeballos', nat:'ARG', pts:68, marca:'Citroën',  auto:'C3 Rally2',        cat:'RC2' },
+      { nombre:'M. Cardano',  nat:'ARG', pts:60, marca:'Citroën',  auto:'C3 Rally2',        cat:'RC2' },
+      { nombre:'S. Rossi',    nat:'ARG', pts:52, marca:'Lancia',   auto:'Ypsilon Rally2 HF',cat:'RC2' },
+      { nombre:'J.P. Monasterolo', nat:'ARG', pts:44, marca:'Škoda', auto:'Fabia RS Rally2', cat:'RC2' },
+      { nombre:'N. Díaz',     nat:'ARG', pts:33, marca:'Ford',     auto:'Fiesta R2',         cat:'RC3' },
+      { nombre:'E. Pesce',    nat:'ARG', pts:22, marca:'Peugeot',  auto:'208 R2',            cat:'Zonal' },
+    ],
+  },
 };
 
 
@@ -572,7 +675,7 @@ function renderCards() {
           ${progSec}
           ${lideres}
           <div class="card-actions">
-            ${isLive?`<button class="btn-timing">▶ Ver Live Timing</button>`:''}
+            ${isLive?`<button class="btn-timing" onclick="openLiveTiming('${c.id}','${(c.nombre||'').replace(/'/g,"\\'")}','${c.tramo_actual||'SS1'}')">▶ Ver Live Timing</button>`:''}
             <button class="btn-detail" onclick="goCalCamp('${c.serie}')">Ver en calendario</button>
           </div>
         </div>
@@ -583,17 +686,44 @@ function renderCards() {
 // ══════════════════════════════════════════════════════════
 // RENDER STANDINGS
 // ══════════════════════════════════════════════════════════
+let catActiva = 'General';
+
+window.onCampChange = function() {
+  catActiva = 'General';
+  renderCatTabs();
+  renderStandings();
+};
+
+function renderCatTabs() {
+  const key = document.getElementById('camp-sel').value;
+  const cats = CATEGORIAS[key] || ['General'];
+  document.getElementById('cat-tabs').innerHTML = cats.map(c => `
+    <button class="cat-tab${c===catActiva?' active':''}" onclick="setCatActiva('${c}')">${c}</button>
+  `).join('');
+}
+
+window.setCatActiva = function(c) {
+  catActiva = c;
+  renderCatTabs();
+  renderStandings();
+};
+
 window.renderStandings = function() {
   const key = document.getElementById('camp-sel').value;
-  const data = STANDINGS[key] || [];
+  const campData = STANDINGS[key] || {};
+  const data = (campData[catActiva] || campData['General'] || []).slice(0, 10);
   const max = data[0]?.pts || 1;
   document.getElementById('standings-list').innerHTML = data.map((d,i) => `
     <div class="standing">
       <div class="st-pos ${i===0?'p1':i===1?'p2':i===2?'p3':''}">${i+1}</div>
-      <div class="st-info"><div class="st-name">${d.nombre}</div><div class="st-nat">${d.nat}</div></div>
+      <div class="st-info">
+        <div class="st-name">${d.nombre} <span class="st-nat">${d.nat}</span></div>
+        <div class="st-car">${d.marca||''} ${d.auto||''}${d.cat?` · ${d.cat}`:''}</div>
+      </div>
       <div class="st-bar"><div class="st-bar-bg"><div class="st-bar-fill" style="width:${Math.round(d.pts/max*100)}%"></div></div></div>
       <div class="st-pts">${d.pts}</div>
     </div>`).join('');
+  if (!data.length) document.getElementById('standings-list').innerHTML = '<div style="padding:14px 0;text-align:center;color:var(--text3);font-size:12px;">Sin datos para esta categoría</div>';
 };
 
 // ══════════════════════════════════════════════════════════
@@ -672,6 +802,8 @@ window.setCalTab = (id) => { calFiltro=id; renderCalendario(); };
 // ══════════════════════════════════════════════════════════
 // FIREBASE CONNECT
 // ══════════════════════════════════════════════════════════
+let realtimeDb = null;
+
 async function autoConnectFirebase() {
   if (!FIREBASE_CONFIG.apiKey || !FIREBASE_CONFIG.projectId) return;
 
@@ -684,6 +816,7 @@ async function autoConnectFirebase() {
   try {
     firebaseApp = initializeApp(FIREBASE_CONFIG, 'rally-app');
     firestoreDb = getFirestore(firebaseApp);
+    realtimeDb  = getDatabase(firebaseApp);
     setFB('ok','Firebase conectado');
     fbConnected = true;
 
@@ -722,6 +855,145 @@ window.useDemo = function() {
 };
 
 // ══════════════════════════════════════════════════════════
+// LIVE TIMING — datos en vivo del tramo en disputa
+// ══════════════════════════════════════════════════════════
+let timingUnsub = null;
+let timingSimInterval = null;
+
+const PILOTOS_DEMO = {
+  ARG: [
+    { nombre:'B. Villagra', marca:'Ford', auto:'Fiesta Rally2 Proto', base:1265.1 },
+    { nombre:'R. García',   marca:'Citroën', auto:'C3 Rally2', base:1278.6 },
+    { nombre:'M. Andreotti',marca:'Škoda', auto:'Fabia RS Rally2', base:1289.4 },
+    { nombre:'C. Meneses',  marca:'Hyundai', auto:'i20 N Rally2', base:1304.0 },
+    { nombre:'L. Ferreiro', marca:'Volkswagen', auto:'Polo GTI R5', base:1311.7 },
+    { nombre:'F. Loeb',     marca:'Citroën', auto:'C3 Rally2', base:1318.2 },
+  ],
+  CHILENO: [
+    { nombre:'J. Martínez', marca:'Škoda', auto:'Fabia RS Rally2', base:998.4 },
+    { nombre:'C. Meneses',  marca:'Hyundai', auto:'i20 N Rally2', base:1010.1 },
+    { nombre:'P. Soto',     marca:'Ford', auto:'Fiesta MkII R2', base:1022.6 },
+    { nombre:'F. Ampuero',  marca:'Mitsubishi', auto:'Lancer Evo IX', base:1035.9 },
+  ],
+  CORDOBES: [
+    { nombre:'T. Olmedo',   marca:'Škoda', auto:'Fabia Rally2/RC2', base:842.3 },
+    { nombre:'R. Zeballos', marca:'Citroën', auto:'C3 Rally2', base:851.0 },
+    { nombre:'M. Cardano',  marca:'Citroën', auto:'C3 Rally2', base:858.7 },
+    { nombre:'S. Rossi',    marca:'Lancia', auto:'Ypsilon Rally2 HF', base:867.4 },
+  ],
+  WRC: [
+    { nombre:'S. Ogier',    marca:'Toyota', auto:'GR Yaris Rally1', base:2145.2 },
+    { nombre:'T. Neuville', marca:'Hyundai', auto:'i20 N Rally1', base:2149.8 },
+    { nombre:'E. Evans',    marca:'Toyota', auto:'GR Yaris Rally1', base:2158.3 },
+    { nombre:'S. Pajari',   marca:'Toyota', auto:'GR Yaris Rally1', base:2163.0 },
+  ],
+  CODASUR: [
+    { nombre:'M. Hirvonen', marca:'Hyundai', auto:'i20 N Rally2', base:1105.5 },
+    { nombre:'G. Paddon',   marca:'Škoda', auto:'Fabia RS Rally2', base:1112.8 },
+    { nombre:'B. Villagra', marca:'Ford', auto:'Fiesta Rally2 Proto', base:1120.1 },
+  ],
+};
+
+function formatTiempo(seg) {
+  const m = Math.floor(seg / 60);
+  const s = (seg % 60).toFixed(1).padStart(4,'0');
+  return `${m}:${s}`;
+}
+
+function renderTimingRows(rows) {
+  const table = document.getElementById('timing-table');
+  const empty = document.getElementById('timing-empty');
+  if (!rows || !rows.length) {
+    table.innerHTML = '';
+    empty.style.display = 'block';
+    empty.textContent = 'Todavía no hay tiempos registrados para este tramo.';
+    return;
+  }
+  empty.style.display = 'none';
+  const sorted = [...rows].sort((a,b) => a.tiempo_seg - b.tiempo_seg);
+  const leaderTime = sorted[0].tiempo_seg;
+  let html = `<div class="tm-row hdr"><span>Pos</span><span>Piloto</span><span style="text-align:right;">Tiempo</span><span style="text-align:right;">Dif.</span></div>`;
+  sorted.forEach((r,i) => {
+    const diff = i===0 ? '—' : `+${(r.tiempo_seg - leaderTime).toFixed(1)}`;
+    html += `<div class="tm-row ${i===0?'p1':i%2===0?'odd':''}">
+      <div class="tm-pos ${i===0?'gold':''}">${i+1}</div>
+      <div><div class="tm-driver">${r.nombre}</div><div class="tm-car">${r.marca||''} ${r.auto||''}</div></div>
+      <div class="tm-time">${formatTiempo(r.tiempo_seg)}</div>
+      <div class="tm-diff ${i===0?'leader':''}">${diff}</div>
+    </div>`;
+  });
+  table.innerHTML = html;
+}
+
+window.openLiveTiming = function(carreraId, nombre, tramo) {
+  document.getElementById('timing-title').textContent = nombre;
+  document.getElementById('timing-sub').textContent = `Tramo ${tramo} · en disputa`;
+  document.getElementById('timing-status').textContent = 'Conectando al tramo...';
+  document.getElementById('timing-modal').style.display = 'flex';
+  document.getElementById('timing-table').innerHTML = '';
+  document.getElementById('timing-empty').style.display = 'none';
+
+  stopLiveTiming(); // limpiar cualquier suscripción/simulación previa
+
+  const serieId = carreraId.split('-')[0];
+  const tramoPath = `${carreraId}_${tramo}`;
+
+  if (fbConnected && realtimeDb) {
+    // Intentar datos reales desde Realtime Database
+    const nodeRef = ref(realtimeDb, `tiempos_en_vivo/${tramoPath}`);
+    let recibioDatos = false;
+    timingUnsub = onValue(nodeRef, snap => {
+      if (snap.exists()) {
+        recibioDatos = true;
+        const raw = snap.val();
+        const rows = Object.values(raw).map(v => ({
+          nombre: v.nombre || v.piloto_id, marca: v.marca||'', auto: v.vehiculo||v.auto||'',
+          tiempo_seg: v.tiempo_parcial_seg ?? v.tiempo_seg ?? 0,
+        }));
+        document.getElementById('timing-status').textContent = 'Datos en vivo desde Firebase';
+        renderTimingRows(rows);
+      } else if (!recibioDatos) {
+        // Sin datos reales todavía: mostrar simulación como demostración
+        document.getElementById('timing-status').textContent = 'Sin datos en vivo aún — mostrando simulación';
+        startTimingSimulation(serieId);
+      }
+    }, () => {
+      document.getElementById('timing-status').textContent = 'Sin datos en vivo aún — mostrando simulación';
+      startTimingSimulation(serieId);
+    });
+  } else {
+    document.getElementById('timing-status').textContent = 'Modo demo — simulación en vivo';
+    startTimingSimulation(serieId);
+  }
+};
+
+function startTimingSimulation(serieId) {
+  const pilotos = PILOTOS_DEMO[serieId] || PILOTOS_DEMO.ARG;
+  let tick = 0;
+
+  function tickSim() {
+    tick++;
+    const rows = pilotos.map(p => ({
+      ...p,
+      tiempo_seg: p.base + (Math.random()-0.5) * 3.2 - tick*0.15,
+    }));
+    renderTimingRows(rows);
+  }
+  tickSim();
+  timingSimInterval = setInterval(tickSim, 3000);
+}
+
+function stopLiveTiming() {
+  if (timingUnsub && realtimeDb) { try { off(ref(realtimeDb)); } catch(e){} timingUnsub = null; }
+  if (timingSimInterval) { clearInterval(timingSimInterval); timingSimInterval = null; }
+}
+
+window.closeLiveTiming = function() {
+  document.getElementById('timing-modal').style.display = 'none';
+  stopLiveTiming();
+};
+
+// ══════════════════════════════════════════════════════════
 // EVENT LISTENERS (en vez de onclick inline — más confiable en file://)
 // ══════════════════════════════════════════════════════════
 document.getElementById('btn-demo').addEventListener('click', useDemo);
@@ -734,12 +1006,14 @@ document.getElementById('fb-pill').addEventListener('click', () => {
 });
 document.getElementById('nav-dashboard-btn').addEventListener('click', () => showView('dashboard'));
 document.getElementById('nav-calendario-btn').addEventListener('click', () => showView('calendario'));
+document.getElementById('btn-close-timing').addEventListener('click', closeLiveTiming);
 
 // ══════════════════════════════════════════════════════════
 // INIT — carga automática + conexión automática a Firebase
 // ══════════════════════════════════════════════════════════
 renderCampeonatos();
 renderCards();      // muestra el calendario oficial de inmediato, sin esperar a Firebase
+renderCatTabs();
 renderStandings();
 autoConnectFirebase(); // conecta a Firebase solo, sin pedir datos
 </script>
