@@ -277,6 +277,20 @@ body{background:var(--dark);color:var(--text1);font-family:'Inter',sans-serif;fo
 // Firebase se carga de forma diferida y opcional — si falla, el resto de la app sigue funcionando.
 let initializeApp, getFirestore, collection, query, where, orderBy, onSnapshot;
 let firebaseReady = false;
+let firebaseApp = null;
+let firestoreDb = null;
+
+// ══════════════════════════════════════════════════════════
+// CONFIGURACIÓN FIREBASE — se completa una vez y queda fija
+// Reemplazá estos valores por los de tu proyecto Firebase Console
+// ══════════════════════════════════════════════════════════
+const FIREBASE_CONFIG = {
+  apiKey:      "AIzaSyC89rBbvda4KgsRNqTj-x3zkKjTqKoWL8Q",
+  authDomain:  "rally-timing-sa-44fc5.firebaseapp.com",
+  projectId:   "rally-timing-sa-44fc5",
+  databaseURL: "https://rally-timing-sa-44fc5-default-rtdb.firebaseio.com",
+  appId:       "1:161466115349:web:631239f0dfbc16a7a5b51c"
+};
 
 async function loadFirebaseSDK() {
   try {
@@ -658,43 +672,28 @@ window.setCalTab = (id) => { calFiltro=id; renderCalendario(); };
 // ══════════════════════════════════════════════════════════
 // FIREBASE CONNECT
 // ══════════════════════════════════════════════════════════
-window.connectFirebase = async function() {
-  const config = {
-    apiKey:      document.getElementById('fb-apiKey').value.trim(),
-    authDomain:  document.getElementById('fb-authDomain').value.trim(),
-    projectId:   document.getElementById('fb-projectId').value.trim(),
-    databaseURL: document.getElementById('fb-dbURL').value.trim(),
-    appId:       document.getElementById('fb-appId').value.trim(),
-  };
-  if (!config.apiKey || !config.projectId) { toast('Completá al menos API Key y Project ID','err'); return; }
+async function autoConnectFirebase() {
+  if (!FIREBASE_CONFIG.apiKey || !FIREBASE_CONFIG.projectId) return;
 
+  if (!firebaseReady) await loadFirebaseSDK();
   if (!firebaseReady) {
-    toast('Cargando el SDK de Firebase...', 'ok');
-    await loadFirebaseSDK();
-    if (!firebaseReady) {
-      toast('No se pudo cargar Firebase. Revisá tu conexión a internet o si el archivo está abierto como file://', 'err');
-      setFB('err','Error cargando SDK');
-      return;
-    }
+    setFB('err','Error cargando SDK');
+    return;
   }
 
   try {
-    const app = initializeApp(config, 'rally-app-' + Date.now());
-    const db  = getFirestore(app);
+    firebaseApp = initializeApp(FIREBASE_CONFIG, 'rally-app');
+    firestoreDb = getFirestore(firebaseApp);
     setFB('ok','Firebase conectado');
     fbConnected = true;
-    document.getElementById('modal').style.display = 'none';
-    toast('Firebase conectado. Cargando datos...','ok');
 
-    const q = collection(db,'carreras');
+    const q = collection(firestoreDb,'carreras');
     onSnapshot(q, snap => {
       const firebaseData = snap.docs.map(d => ({ id:d.id, ...d.data() }));
-      // Mezclar: datos Firebase tienen prioridad; completar con automáticos para los que no estén en Firebase
       if (firebaseData.length > 0) {
         carrerasData = firebaseData;
       } else {
         carrerasData = [];
-        toast('Firebase conectado — sin datos manuales. Mostrando calendario automático.','ok');
       }
       renderCards();
     }, err => {
@@ -705,6 +704,13 @@ window.connectFirebase = async function() {
     toast('Error: ' + e.message,'err');
     setFB('err','Error — revisá las credenciales');
   }
+}
+
+// Botón "Conectar" del modal ahora solo reintenta la conexión automática
+window.connectFirebase = async function() {
+  document.getElementById('modal').style.display = 'none';
+  toast('Reconectando a Firebase...', 'ok');
+  await autoConnectFirebase();
 };
 
 window.useDemo = function() {
@@ -730,11 +736,12 @@ document.getElementById('nav-dashboard-btn').addEventListener('click', () => sho
 document.getElementById('nav-calendario-btn').addEventListener('click', () => showView('calendario'));
 
 // ══════════════════════════════════════════════════════════
-// INIT — carga automática sin Firebase
+// INIT — carga automática + conexión automática a Firebase
 // ══════════════════════════════════════════════════════════
 renderCampeonatos();
-renderCards();      // carga las carreras automáticamente desde el calendario oficial
+renderCards();      // muestra el calendario oficial de inmediato, sin esperar a Firebase
 renderStandings();
+autoConnectFirebase(); // conecta a Firebase solo, sin pedir datos
 </script>
 </body>
 </html>
