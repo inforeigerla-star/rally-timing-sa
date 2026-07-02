@@ -197,11 +197,11 @@ body{background:var(--dark);color:var(--text1);font-family:'Inter',sans-serif;fo
   </div>
 </header>
 
-<!-- FIREBASE MODAL -->
-<div class="modal-overlay" id="modal">
+<!-- FIREBASE MODAL (oculto por defecto — solo se abre manualmente) -->
+<div class="modal-overlay" id="modal" style="display:none;">
   <div class="modal-box">
-    <div class="modal-title">Conectar con Firebase</div>
-    <div class="modal-sub">Pegá tus credenciales de Firebase Console. Encontrás cada valor en ⚙️ → Configuración del proyecto.</div>
+    <div class="modal-title">Conexión Firebase</div>
+    <div class="modal-sub">La app ya se conecta sola al abrir. Este panel es solo para reconectar si algo falla.</div>
     <div class="field-group"><label>API KEY</label><input id="fb-apiKey" placeholder="AIzaSy..."/></div>
     <div class="field-group"><label>PROJECT ID</label><input id="fb-projectId" placeholder="rally-timing-sa"/></div>
     <div class="field-group"><label>AUTH DOMAIN</label><input id="fb-authDomain" placeholder="rally-timing-sa.firebaseapp.com"/></div>
@@ -209,7 +209,7 @@ body{background:var(--dark);color:var(--text1);font-family:'Inter',sans-serif;fo
     <div class="field-group"><label>APP ID</label><input id="fb-appId" placeholder="1:123...:web:abc..."/></div>
     <div class="modal-btns">
       <button class="btn-demo" id="btn-demo">Usar datos demo</button>
-      <button class="btn-primary" id="btn-connect">Conectar</button>
+      <button class="btn-primary" id="btn-connect">Reconectar</button>
       <button class="btn-ghost" id="btn-close-modal">Cerrar</button>
     </div>
   </div>
@@ -946,6 +946,84 @@ function renderTimingRows(rows) {
   table.innerHTML = html;
 }
 
+// ══════════════════════════════════════════════════════════
+// WEB SCRAPING — ewrc-results.com vía proxy CORS público
+// Orden de prioridad de datos: scraping real → Firebase → simulación
+// ══════════════════════════════════════════════════════════
+let scrapeInterval = null;
+const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
+
+// Mapeo de nuestras series a slugs de búsqueda en ewrc-results.com
+const EWRC_SEARCH_TERMS = {
+  ARG:      'Argentina',
+  CODASUR:  'Argentina',
+  WRC:      'WRC',
+  CHILENO:  'Chile',
+  CORDOBES: 'Cordoba',
+};
+
+async function buscarEventoEwrc(serieId, nombreCarrera) {
+  const term = encodeURIComponent(EWRC_SEARCH_TERMS[serieId] || nombreCarrera);
+  const searchUrl = `https://www.ewrc-results.com/byyear/2026/?filter=${term}`;
+  const res = await fetch(CORS_PROXY + encodeURIComponent(searchUrl));
+  if (!res.ok) throw new Error('No se pudo buscar el evento');
+  const html = await res.text();
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const link = doc.querySelector('a[href*="/results/"]');
+  if (!link) throw new Error('Evento no encontrado en ewrc-results.com');
+  return 'https://www.ewrc-results.com' + link.getAttribute('href');
+}
+
+async function scrapearTiemposEwrc(eventUrl) {
+  const res = await fetch(CORS_PROXY + encodeURIComponent(eventUrl));
+  if (!res.ok) throw new Error('No se pudo leer resultados');
+  const html = await res.text();
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const rows = [...doc.querySelectorAll('table.results tr')].slice(1, 12);
+  const out = [];
+  rows.forEach(tr => {
+    const cells = tr.querySelectorAll('td');
+    if (cells.length < 4) return;
+    const nombre = cells[2]?.textContent?.trim() || '';
+    const auto   = cells[3]?.textContent?.trim() || '';
+    const tiempoTxt = cells[cells.length-1]?.textContent?.trim() || '';
+    const m = tiempoTxt.match(/(\d+):(\d+)[.:](\d+)/);
+    if (!nombre || !m) return;
+    const tiempo_seg = (+m[1])*60 + (+m[2]) + (+('0.'+m[3]));
+    out.push({ nombre, marca: auto.split(' ')[0]||'', auto, tiempo_seg });
+  });
+  return out;
+}
+
+async function intentarScraping(serieId, nombreCarrera) {
+  try {
+    document.getElementById('timing-status').textContent = 'Buscando datos reales en ewrc-results.com...';
+    const eventUrl = await buscarEventoEwrc(serieId, nombreCarrera);
+    const rows = await scrapearTiemposEwrc(eventUrl);
+    if (!rows.length) throw new Error('Sin filas de resultados');
+    renderTimingRows(rows);
+    document.getElementById('timing-status').textContent = '🌐 Tiempos reales — ewrc-results.com (actualiza cada 20s)';
+    return true;
+  } catch (e) {
+    console.warn('Scraping falló:', e.message);
+    return false;
+  }
+}
+
+function startScrapingLoop(serieId, nombreCarrera) {
+  intentarScraping(serieId, nombreCarrera).then(ok => {
+    if (!ok) {
+      document.getElementById('timing-status').textContent = 'Sin datos reales disponibles — mostrando simulación';
+      startTimingSimulation(serieId);
+      return;
+    }
+    scrapeInterval = setInterval(async () => {
+      const ok2 = await intentarScraping(serieId, nombreCarrera);
+      if (!ok2 && !timingSimInterval) startTimingSimulation(serieId);
+    }, 20000);
+  });
+}
+
 window.openLiveTiming = function(carreraId, nombre, tramo) {
   document.getElementById('timing-title').textContent = nombre;
   document.getElementById('timing-sub').textContent = `Tramo ${tramo} · en disputa`;
@@ -954,22 +1032,21 @@ window.openLiveTiming = function(carreraId, nombre, tramo) {
   document.getElementById('timing-table').innerHTML = '';
   document.getElementById('timing-empty').style.display = 'none';
 
-  stopLiveTiming(); // limpiar cualquier suscripción/simulación previa
+  stopLiveTiming(); // limpiar cualquier suscripción/simulación/scraping previo
 
   const serieId = carreraId.split('-')[0];
   const tramoPath = `${carreraId}_${tramo}`;
 
-  // Siempre arranca automático — no requiere ninguna carga manual en Firebase
-  document.getElementById('timing-status').textContent = 'En vivo · actualiza cada 3s';
-  startTimingSimulation(serieId);
+  // 1º intenta datos reales por web scraping (ewrc-results.com)
+  startScrapingLoop(serieId, nombre);
 
-  // Si además hay Firebase conectado y alguien cargó datos reales ahí,
-  // esos datos reemplazan automáticamente a la simulación sin que haya que hacer nada.
+  // 2º si además hay Firebase conectado con datos manuales, tienen prioridad máxima
   if (fbConnected && realtimeDb) {
     const nodeRef = ref(realtimeDb, `tiempos_en_vivo/${tramoPath}`);
     timingUnsub = onValue(nodeRef, snap => {
       if (snap.exists()) {
         if (timingSimInterval) { clearInterval(timingSimInterval); timingSimInterval = null; }
+        if (scrapeInterval) { clearInterval(scrapeInterval); scrapeInterval = null; }
         const raw = snap.val();
         const rows = Object.values(raw).map(v => ({
           nombre: v.nombre || v.piloto_id, marca: v.marca||'', auto: v.vehiculo||v.auto||'',
@@ -1001,6 +1078,7 @@ function startTimingSimulation(serieId) {
 function stopLiveTiming() {
   if (timingUnsub && realtimeDb) { try { off(ref(realtimeDb)); } catch(e){} timingUnsub = null; }
   if (timingSimInterval) { clearInterval(timingSimInterval); timingSimInterval = null; }
+  if (scrapeInterval) { clearInterval(scrapeInterval); scrapeInterval = null; }
 }
 
 window.closeLiveTiming = function() {
