@@ -561,26 +561,30 @@ const STANDINGS = {
     ],
   },
   WRC: {
+    // Clasificación oficial de pilotos tras Ronda 8 — Acropolis Rally Greece (28/6/2026)
+    // Fuente: WRC.com / Toyota Gazoo Racing Media
     General: [
-      { nombre:'E. Evans',    nat:'GBR', pts:158, marca:'Toyota',  auto:'GR Yaris Rally1', cat:'WRC1' },
-      { nombre:'T. Katsuta',  nat:'JPN', pts:151, marca:'Toyota',  auto:'GR Yaris Rally1', cat:'WRC1' },
+      { nombre:'E. Evans',    nat:'GBR', pts:162, marca:'Toyota',  auto:'GR Yaris Rally1', cat:'WRC1' },
+      { nombre:'T. Katsuta',  nat:'JPN', pts:148, marca:'Toyota',  auto:'GR Yaris Rally1', cat:'WRC1' },
       { nombre:'S. Ogier',    nat:'FRA', pts:125, marca:'Toyota',  auto:'GR Yaris Rally1', cat:'WRC1' },
-      { nombre:'S. Pajari',   nat:'FIN', pts:114, marca:'Toyota',  auto:'GR Yaris Rally1', cat:'WRC1' },
+      { nombre:'S. Pajari',   nat:'FIN', pts:116, marca:'Toyota',  auto:'GR Yaris Rally1', cat:'WRC1' },
       { nombre:'O. Solberg',  nat:'SWE', pts:103, marca:'Toyota',  auto:'GR Yaris Rally1', cat:'WRC1' },
-      { nombre:'A. Fourmaux', nat:'FRA', pts:97,  marca:'Hyundai', auto:'i20 N Rally1',    cat:'WRC1' },
-      { nombre:'T. Neuville',  nat:'BEL', pts:91,  marca:'Hyundai', auto:'i20 N Rally1',    cat:'WRC1' },
-      { nombre:'J. McErlean',  nat:'IRL', pts:68,  marca:'Ford',    auto:'Puma Rally1',     cat:'WRC1' },
-      { nombre:'M. Sesks',     nat:'LAT', pts:54,  marca:'Ford',    auto:'Puma Rally1',     cat:'WRC1' },
-      { nombre:'R. Virves',    nat:'EST', pts:112, marca:'Škoda',   auto:'Fabia RS Rally2', cat:'WRC2' },
+      { nombre:'A. Fourmaux', nat:'FRA', pts:95,  marca:'Hyundai', auto:'i20 N Rally1',    cat:'WRC1' },
+      { nombre:'T. Neuville', nat:'BEL', pts:95,  marca:'Hyundai', auto:'i20 N Rally1',    cat:'WRC1' },
+      { nombre:'H. Paddon',   nat:'NZL', pts:21,  marca:'Hyundai', auto:'i20 N Rally1',    cat:'WRC1' },
+      { nombre:'E. Lappi',    nat:'FIN', pts:21,  marca:'Hyundai', auto:'i20 N Rally1',    cat:'WRC1' },
+      { nombre:'Y. Rossel',   nat:'FRA', pts:20,  marca:'Toyota',  auto:'GR Yaris Rally1', cat:'WRC1' },
     ],
     WRC2: [
-      { nombre:'R. Virves',   nat:'EST', pts:112, marca:'Škoda',  auto:'Fabia RS Rally2', cat:'WRC2' },
-      { nombre:'T. Suninen',  nat:'FIN', pts:98,  marca:'Škoda',  auto:'Fabia RS Rally2', cat:'WRC2' },
-      { nombre:'A. Mikkelsen',nat:'NOR', pts:81,  marca:'Škoda',  auto:'Fabia RS Rally2', cat:'WRC2' },
+      { nombre:'R. Virves',    nat:'EST', pts:112, marca:'Škoda',   auto:'Fabia RS Rally2', cat:'WRC2' },
+      { nombre:'A. Mikkelsen', nat:'NOR', pts:98,  marca:'Škoda',   auto:'Fabia RS Rally2', cat:'WRC2' },
+      { nombre:'A. Cachón',    nat:'ESP', pts:81,  marca:'Toyota',  auto:'GR Yaris Rally2', cat:'WRC2' },
+      { nombre:'R. Korhonen',  nat:'FIN', pts:68,  marca:'Toyota',  auto:'GR Yaris Rally2', cat:'WRC2' },
+      { nombre:'D. Domínguez', nat:'PAR', pts:59,  marca:'Toyota',  auto:'GR Yaris Rally2', cat:'WRC2' },
     ],
     WRC3: [
-      { nombre:'M. Fontana',  nat:'ITA', pts:76, marca:'Citroën', auto:'C3 Rally3', cat:'WRC3' },
-      { nombre:'A. Türkkan',  nat:'TUR', pts:64, marca:'Citroën', auto:'C3 Rally3', cat:'WRC3' },
+      { nombre:'L. Rossel',   nat:'FRA', pts:76, marca:'Lancia',  auto:'Ypsilon Rally2 HF', cat:'WRC3' },
+      { nombre:'Y. Yamamoto', nat:'JPN', pts:64, marca:'Toyota',  auto:'GR Yaris Rally2',   cat:'WRC3' },
     ],
   },
   CHILENO: {
@@ -770,7 +774,17 @@ window.setCatActiva = function(c) {
 window.renderStandings = function() {
   const key = document.getElementById('camp-sel').value;
   const campData = STANDINGS[key] || {};
-  const data = (campData[catActiva] || campData['General'] || []).slice(0, 10);
+  const general = campData['General'] || [];
+  // Si hay una lista específica para la categoría (ej WRC2/WRC3) se usa esa;
+  // si no, se filtra la lista General por el campo `cat` de cada piloto.
+  let data;
+  if (catActiva === 'General') {
+    data = general.slice(0, 10);
+  } else if (campData[catActiva]) {
+    data = campData[catActiva].slice(0, 10);
+  } else {
+    data = general.filter(d => d.cat === catActiva).slice(0, 10);
+  }
   const max = data[0]?.pts || 1;
   document.getElementById('standings-list').innerHTML = data.map((d,i) => `
     <div class="standing">
